@@ -41,6 +41,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .item b{font-variant-numeric:tabular-nums}.item small{color:var(--muted)}
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.foot a{color:inherit}
+.switch{display:flex;gap:10px;align-items:center;margin:0;font-size:16px;color:var(--fg)}.switch input{width:20px;height:20px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:9}
 </style>
 </head>
@@ -54,6 +55,15 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
     <div class="clock" id="clock" hidden>00:00</div>
     <div class="sub" id="startedAt" hidden></div>
     <button class="big" id="startBtn" type="button">Start feed</button>
+    <div class="card" id="remCard">
+      <label class="switch"><input type="checkbox" id="remOn"> Remind me about the next feed</label>
+      <div id="remOpts" hidden>
+        <div class="row" style="align-items:end"><div><label for="remH">Hours after the start of a feed</label><input id="remH" type="number" inputmode="decimal" min="0.5" max="12" step="0.25"></div>
+        <div style="flex:0 0 auto"><button class="btn ghost" id="remTest" type="button" style="margin:0;padding:10px 14px">Test</button></div></div>
+        <div class="sub" id="remNext" style="text-align:left;margin-top:8px"></div>
+      </div>
+      <div class="sub" id="remMsg" style="text-align:left"></div>
+    </div>
     <div class="card" id="stopCard" hidden>
       <label>Breast</label>
       <div class="chips sides" id="liveSides"></div>
@@ -93,7 +103,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 </main>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '1.1.0';
+var APP_VERSION = '1.2.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -162,13 +172,13 @@ function renderLive(){
   $('lastFeed').textContent = last ? 'Last feed ' + dur(Date.now() - last.s) + ' ago (' + tstr(last.s) + ')' : 'No feeds yet';
 }
 function tick(){ var s = Math.max(0, Math.floor((Date.now() - live.s) / 1000)); $('clock').textContent = pad(Math.floor(s/60)) + ':' + pad(s % 60); if (s >= 3600) $('clock').textContent = Math.floor(s/3600) + ':' + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
-$('startBtn').onclick = function(){ live = {s: Date.now(), side: ''}; liveSide = ''; save(LIVE, live); $('liveMl').value = ''; renderLive(); };
+$('startBtn').onclick = function(){ live = {s: Date.now(), side: ''}; liveSide = ''; save(LIVE, live); $('liveMl').value = ''; renderLive(); schedule(); };
 $('stopBtn').onclick = function(){
   var ml = parseInt($('liveMl').value, 10) || 0;
   feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: live.s, e: Date.now(), ml: ml, side: liveSide});
-  save(KEY, feeds); live = null; localStorage.removeItem(LIVE); renderLive(); toast('Saved');
+  save(KEY, feeds); live = null; localStorage.removeItem(LIVE); renderLive(); toast('Saved'); schedule();
 };
-$('cancelBtn').onclick = function(){ if (confirm('Discard this feed?')){ live = null; localStorage.removeItem(LIVE); renderLive(); } };
+$('cancelBtn').onclick = function(){ if (confirm('Discard this feed?')){ live = null; localStorage.removeItem(LIVE); renderLive(); schedule(); } };
 
 /* add / edit */
 function resetForm(){
@@ -185,9 +195,9 @@ $('saveBtn').onclick = function(){
   var ml = parseInt($('fMl').value, 10) || 0;
   if (editing){ var f = feeds.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; f.side = formSide; } }
   else feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: s, e: e, ml: ml, side: formSide});
-  save(KEY, feeds); editing = null; toast('Saved'); resetForm(); tab('hist');
+  save(KEY, feeds); editing = null; toast('Saved'); resetForm(); tab('hist'); schedule();
 };
-$('delBtn').onclick = function(){ if (editing && confirm('Delete this feed?')){ feeds = feeds.filter(function(x){ return x.id !== editing; }); save(KEY, feeds); editing = null; tab('hist'); } };
+$('delBtn').onclick = function(){ if (editing && confirm('Delete this feed?')){ feeds = feeds.filter(function(x){ return x.id !== editing; }); save(KEY, feeds); editing = null; tab('hist'); schedule(); } };
 $('cancelEdit').onclick = function(){ editing = null; tab('hist'); };
 function edit(id){
   var f = feeds.find(function(x){ return x.id === id; }); if (!f) return;
@@ -213,7 +223,49 @@ $('exportBtn').onclick = function(){
   var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'})); a.download = 'baby-feeds-' + dstr(Date.now()) + '.csv'; a.click();
 };
 
-renderLive(); resetForm();
+/* next-feed notification (web push, sent by a small server job so it arrives with the app closed) */
+var PUSH_URL = 'https://jsddqdmaatosqvbdrzjo.supabase.co/functions/v1/bf-push';
+var VAPID = 'BA_-09UuzUtJEbYBt3t64pXyFOqGa7AnXgXFkZ2o5dMZFPKVm5Y_2qiWj0QGv29y5LmaJFBVb1aN2BvZpLeVnTA';
+var rem = load('bf-rem-v1', {on: false, h: 3, sub: null});
+function remSave(){ save('bf-rem-v1', rem); }
+function b64(s){ var p = '='.repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, function(c){ return c.charCodeAt(0); }); }
+function post(o){ return fetch(PUSH_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(o)}).then(function(r){ return r.json(); }); }
+function pushOk(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function nextDue(){
+  var last = feeds.reduce(function(a, f){ return Math.max(a, f.s); }, 0);
+  if (live) last = Math.max(last, live.s);
+  return last ? last + rem.h * 3600e3 : 0;
+}
+function remRender(){
+  $('remOn').checked = rem.on; $('remOpts').hidden = !rem.on; $('remH').value = rem.h;
+  var d = nextDue();
+  $('remNext').textContent = rem.on && d > Date.now() ? 'Next reminder at ' + tstr(d) : '';
+}
+function schedule(){
+  remRender();
+  if (!rem.on || !rem.sub) return;
+  var d = nextDue();
+  if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'It has been ' + rem.h + ' h since the last feed started.'}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
+  else post({action: 'cancel', endpoint: rem.sub.endpoint}).catch(function(){});
+}
+function enableRem(){
+  $('remMsg').textContent = '';
+  if (!pushOk()){ $('remMsg').textContent = 'This browser cannot do notifications. On iPhone, add the app to the Home Screen first.'; return Promise.resolve(false); }
+  return Notification.requestPermission().then(function(p){
+    if (p !== 'granted'){ $('remMsg').textContent = 'Notifications are blocked. Allow them for this app in the phone or browser settings.'; return false; }
+    return navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription().then(function(sub){ return sub || reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64(VAPID)}); });
+    }).then(function(sub){ rem.sub = JSON.parse(JSON.stringify(sub)); rem.on = true; remSave(); schedule(); return true; });
+  }).catch(function(e){ $('remMsg').textContent = 'Could not turn on notifications (' + (e && e.message || e) + ')'; return false; });
+}
+$('remOn').onchange = function(){
+  if (this.checked){ enableRem().then(function(ok){ if (!ok){ rem.on = false; remSave(); } remRender(); }); }
+  else { rem.on = false; remSave(); if (rem.sub) post({action: 'cancel', endpoint: rem.sub.endpoint}).catch(function(){}); remRender(); }
+};
+$('remH').onchange = function(){ var h = parseFloat(this.value); rem.h = h >= 0.5 && h <= 12 ? h : 3; remSave(); schedule(); };
+$('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent = 'Sending…'; post({action: 'test', sub: rem.sub}).then(function(r){ $('remMsg').textContent = r.ok ? 'Sent, it should appear in a few seconds.' : 'Failed (' + (r.error || 'unknown') + ').'; }).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service.'; }); };
+
+renderLive(); resetForm(); remRender();
 setInterval(function(){ if (!$('live').hidden && !live) renderLive(); }, 60000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>
