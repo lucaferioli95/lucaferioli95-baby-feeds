@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Baby Feeds</title>
+<meta name="theme-color" content="#fff7f2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{--bg:#fff7f2;--surface:#fff;--fg:#2b2320;--muted:#8a7a72;--line:#eadbd3;--accent:#e58b78;--accent-fg:#fff;--ok:#5b9a72}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1715;--surface:#262020;--fg:#f3e9e4;--muted:#a39189;--line:#3a302d;--accent:#e58b78;--accent-fg:#1c1715;--ok:#7cc096}}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+main{max-width:480px;margin:0 auto;padding:12px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+h1{font-size:18px;margin:0}
+.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;padding:4px}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tab{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:12px 0;font:inherit;font-weight:600;color:var(--muted)}
+.tab.on{color:var(--fg);border-bottom-color:var(--accent)}
+.big{display:block;width:100%;border:0;border-radius:20px;background:var(--accent);color:var(--accent-fg);font:inherit;font-size:22px;font-weight:700;padding:34px 0;margin:10px 0}
+.big.stop{background:var(--fg);color:var(--bg)}
+.clock{text-align:center;font-size:56px;font-weight:300;font-variant-numeric:tabular-nums;margin:18px 0 0}
+.sub{text-align:center;color:var(--muted);font-size:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:20px;padding:8px 14px;font:inherit}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn{display:block;width:100%;border:0;border-radius:12px;background:var(--accent);color:var(--accent-fg);font:inherit;font-weight:700;padding:14px;margin-top:14px}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--fg)}
+.btn.del{background:none;color:#c0392b;border:1px solid var(--line)}
+.day{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 6px;font-weight:700}
+.day span{font-weight:400;font-size:13px;color:var(--muted)}
+.item{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--surface);color:inherit;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0;font:inherit}
+.item b{font-variant-numeric:tabular-nums}.item small{color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:30px 0}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.foot a{color:inherit}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:9}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Baby Feeds</h1><button type="button" class="linkbtn" id="installBtn">Install app</button></header>
+  <nav class="tabs"><button class="tab on" data-tab="live">Live</button><button class="tab" data-tab="add">Add</button><button class="tab" data-tab="hist">History</button></nav>
+
+  <section id="live">
+    <div class="sub" id="lastFeed"></div>
+    <div class="clock" id="clock" hidden>00:00</div>
+    <div class="sub" id="startedAt" hidden></div>
+    <button class="big" id="startBtn" type="button">Start feed</button>
+    <div class="card" id="stopCard" hidden>
+      <label for="liveMl">Top-up (ml)</label>
+      <input id="liveMl" type="number" inputmode="numeric" min="0" placeholder="0">
+      <div class="chips" data-for="liveMl"></div>
+      <button class="big stop" id="stopBtn" type="button" style="font-size:20px;padding:20px 0">Stop &amp; save</button>
+      <button class="btn ghost" id="cancelBtn" type="button">Cancel this feed</button>
+    </div>
+  </section>
+
+  <section id="add" hidden>
+    <div class="card">
+      <h2 id="formTitle" style="margin:0;font-size:16px">Add a feed</h2>
+      <label for="fDate">Date</label><input id="fDate" type="date">
+      <div class="row">
+        <div><label for="fStart">Start</label><input id="fStart" type="time"></div>
+        <div><label for="fEnd">End</label><input id="fEnd" type="time"></div>
+      </div>
+      <label for="fMl">Top-up (ml)</label>
+      <input id="fMl" type="number" inputmode="numeric" min="0" placeholder="0">
+      <div class="chips" data-for="fMl"></div>
+      <button class="btn" id="saveBtn" type="button">Save</button>
+      <button class="btn del" id="delBtn" type="button" hidden>Delete this feed</button>
+      <button class="btn ghost" id="cancelEdit" type="button" hidden>Cancel</button>
+    </div>
+  </section>
+
+  <section id="hist" hidden>
+    <div id="histList"></div>
+    <button class="btn ghost" id="exportBtn" type="button">Export CSV</button>
+  </section>
+
+  <p class="foot">Version <span id="ver"></span> · <a href="https://github.com/lucaferioli95/baby-feeds/blob/main/CHANGELOG.md">Changelog</a> · <span id="hostNote"></span><br>Data is stored on this device only.</p>
+</main>
+<script src="install.js"></script>
+<script>
+var APP_VERSION = '1.0.0';
+var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
+function $(id){ return document.getElementById(id); }
+function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
+function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){ toast('Could not save on this device'); } }
+var feeds = load(KEY, []);       // {id, s, e (ms), ml}
+var live = load(LIVE, null);     // {s} while a feed is running
+var editing = null;
+$('ver').textContent = APP_VERSION;
+
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+function dstr(ms){ var d = new Date(ms); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function tstr(ms){ var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function dur(ms){ var m = Math.round(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m/60) + ' h ' + pad(m % 60) + ' min'; }
+function dayLabel(key){
+  var t = dstr(Date.now()), y = dstr(Date.now() - 864e5);
+  if (key === t) return 'Today'; if (key === y) return 'Yesterday';
+  var p = key.split('-'); return new Date(p[0], p[1]-1, p[2]).toLocaleDateString(undefined, {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+}
+function toast(m){ var t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 1800); }
+function toMs(date, time){ var d = date.split('-'), t = time.split(':'); return new Date(+d[0], +d[1]-1, +d[2], +t[0], +t[1]).getTime(); }
+
+/* tabs */
+function tab(name){
+  ['live','add','hist'].forEach(function(t){ $(t).hidden = t !== name; });
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('on', b.dataset.tab === name); });
+  if (name === 'hist') renderHist();
+  if (name === 'add' && editing === null) resetForm();
+}
+document.querySelectorAll('.tab').forEach(function(b){ b.onclick = function(){ if (b.dataset.tab !== 'add') editing = null; tab(b.dataset.tab); }; });
+
+/* chips */
+[30,60,90,120].forEach(function(n){
+  document.querySelectorAll('.chips').forEach(function(c){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.onclick = function(){ $(c.dataset.for).value = n; };
+    c.appendChild(b);
+  });
+});
+
+/* live */
+var timer = null;
+function renderLive(){
+  var run = !!live;
+  $('startBtn').hidden = run; $('stopCard').hidden = !run; $('clock').hidden = !run; $('startedAt').hidden = !run;
+  if (run){ $('startedAt').textContent = 'Started ' + tstr(live.s); tick(); if (!timer) timer = setInterval(tick, 1000); }
+  else { clearInterval(timer); timer = null; }
+  var last = feeds.length ? feeds.reduce(function(a,b){ return b.s > a.s ? b : a; }) : null;
+  $('lastFeed').textContent = last ? 'Last feed ' + dur(Date.now() - last.s) + ' ago (' + tstr(last.s) + ')' : 'No feeds yet';
+}
+function tick(){ var s = Math.max(0, Math.floor((Date.now() - live.s) / 1000)); $('clock').textContent = pad(Math.floor(s/60)) + ':' + pad(s % 60); if (s >= 3600) $('clock').textContent = Math.floor(s/3600) + ':' + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
+$('startBtn').onclick = function(){ live = {s: Date.now()}; save(LIVE, live); $('liveMl').value = ''; renderLive(); };
+$('stopBtn').onclick = function(){
+  var ml = parseInt($('liveMl').value, 10) || 0;
+  feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: live.s, e: Date.now(), ml: ml});
+  save(KEY, feeds); live = null; localStorage.removeItem(LIVE); renderLive(); toast('Saved');
+};
+$('cancelBtn').onclick = function(){ if (confirm('Discard this feed?')){ live = null; localStorage.removeItem(LIVE); renderLive(); } };
+
+/* add / edit */
+function resetForm(){
+  var n = Date.now();
+  $('formTitle').textContent = 'Add a feed'; $('fDate').value = dstr(n); $('fStart').value = tstr(n - 15*60000); $('fEnd').value = tstr(n); $('fMl').value = '';
+  $('delBtn').hidden = true; $('cancelEdit').hidden = true;
+}
+$('saveBtn').onclick = function(){
+  var date = $('fDate').value, st = $('fStart').value, en = $('fEnd').value;
+  if (!date || !st || !en){ toast('Fill date, start and end'); return; }
+  var s = toMs(date, st), e = toMs(date, en);
+  if (e < s) e += 864e5;                       // finished after midnight
+  if (e - s > 6 * 3600e3){ toast('That is over 6 hours, check the times'); return; }
+  var ml = parseInt($('fMl').value, 10) || 0;
+  if (editing){ var f = feeds.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; } }
+  else feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: s, e: e, ml: ml});
+  save(KEY, feeds); editing = null; toast('Saved'); resetForm(); tab('hist');
+};
+$('delBtn').onclick = function(){ if (editing && confirm('Delete this feed?')){ feeds = feeds.filter(function(x){ return x.id !== editing; }); save(KEY, feeds); editing = null; tab('hist'); } };
+$('cancelEdit').onclick = function(){ editing = null; tab('hist'); };
+function edit(id){
+  var f = feeds.find(function(x){ return x.id === id; }); if (!f) return;
+  editing = id; tab('add');
+  $('formTitle').textContent = 'Edit feed'; $('fDate').value = dstr(f.s); $('fStart').value = tstr(f.s); $('fEnd').value = tstr(f.e); $('fMl').value = f.ml || '';
+  $('delBtn').hidden = false; $('cancelEdit').hidden = false;
+}
+
+/* history */
+function renderHist(){
+  if (!feeds.length){ $('histList').innerHTML = '<div class="empty">No feeds yet.</div>'; return; }
+  var days = {};
+  feeds.slice().sort(function(a,b){ return b.s - a.s; }).forEach(function(f){ (days[dstr(f.s)] = days[dstr(f.s)] || []).push(f); });
+  $('histList').innerHTML = Object.keys(days).sort().reverse().map(function(k){
+    var L = days[k], mins = L.reduce(function(a,f){ return a + (f.e - f.s) / 60000; }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
+    return '<div class="day">' + dayLabel(k) + '<span>' + L.length + ' feeds · ' + Math.round(mins) + ' min' + (ml ? ' · ' + ml + ' ml' : '') + '</span></div>' +
+      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + '</small></span><span>' + (f.ml ? '+' + f.ml + ' ml' : '') + '</span></button>'; }).join('');
+  }).join('');
+}
+$('histList').onclick = function(e){ var b = e.target.closest('.item'); if (b) edit(b.dataset.id); };
+$('exportBtn').onclick = function(){
+  var rows = ['Date,Start,End,Minutes,TopUp_ml'].concat(feeds.slice().sort(function(a,b){ return a.s - b.s; }).map(function(f){ return [dstr(f.s), tstr(f.s), tstr(f.e), Math.round((f.e - f.s)/60000), f.ml || 0].join(','); }));
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'})); a.download = 'baby-feeds-' + dstr(Date.now()) + '.csv'; a.click();
+};
+
+renderLive(); resetForm();
+setInterval(function(){ if (!$('live').hidden && !live) renderLive(); }, 60000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
