@@ -58,8 +58,9 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
     <div class="card" id="remCard">
       <label class="switch"><input type="checkbox" id="remOn"> Remind me about the next feed</label>
       <div id="remOpts" hidden>
-        <div class="row" style="align-items:end"><div><label for="remH">Hours after the start of a feed</label><input id="remH" type="number" inputmode="decimal" min="0.5" max="12" step="0.25"></div>
-        <div style="flex:0 0 auto"><button class="btn ghost" id="remTest" type="button" style="margin:0;padding:10px 14px">Test</button></div></div>
+        <div class="row" style="align-items:end"><div><label for="remT">Next feed at</label><input id="remT" type="time"></div>
+        <div style="flex:0 0 auto"><button class="btn ghost" id="rem3" type="button" style="margin:0;padding:10px 14px">In 3 h</button></div></div>
+        <button class="linkbtn" id="remTest" type="button" style="margin-top:8px;padding-left:0">Send a test notification</button>
         <div class="sub" id="remNext" style="text-align:left;margin-top:8px"></div>
       </div>
       <div class="sub" id="remMsg" style="text-align:left"></div>
@@ -103,7 +104,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 </main>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '1.2.1';
+var APP_VERSION = '1.3.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -172,7 +173,7 @@ function renderLive(){
   $('lastFeed').textContent = last ? 'Last feed ' + dur(Date.now() - last.s) + ' ago (' + tstr(last.s) + ')' : 'No feeds yet';
 }
 function tick(){ var s = Math.max(0, Math.floor((Date.now() - live.s) / 1000)); $('clock').textContent = pad(Math.floor(s/60)) + ':' + pad(s % 60); if (s >= 3600) $('clock').textContent = Math.floor(s/3600) + ':' + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
-$('startBtn').onclick = function(){ live = {s: Date.now(), side: ''}; liveSide = ''; save(LIVE, live); $('liveMl').value = ''; renderLive(); schedule(); };
+$('startBtn').onclick = function(){ live = {s: Date.now(), side: ''}; liveSide = ''; save(LIVE, live); $('liveMl').value = ''; renderLive(); rem.manual = null; remSave(); schedule(); };
 $('stopBtn').onclick = function(){
   var ml = parseInt($('liveMl').value, 10) || 0;
   feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: live.s, e: Date.now(), ml: ml, side: liveSide});
@@ -226,26 +227,30 @@ $('exportBtn').onclick = function(){
 /* next-feed notification (web push, sent by a small server job so it arrives with the app closed) */
 var PUSH_URL = 'https://jsddqdmaatosqvbdrzjo.supabase.co/functions/v1/bf-push';
 var VAPID = 'BA_-09UuzUtJEbYBt3t64pXyFOqGa7AnXgXFkZ2o5dMZFPKVm5Y_2qiWj0QGv29y5LmaJFBVb1aN2BvZpLeVnTA';
-var rem = load('bf-rem-v1', {on: false, h: 3, sub: null});
+var rem = load('bf-rem-v1', {on: false, h: 3, sub: null, manual: null});
+rem.h = 3;
 function remSave(){ save('bf-rem-v1', rem); }
 function b64(s){ var p = '='.repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, function(c){ return c.charCodeAt(0); }); }
 function post(o){ return fetch(PUSH_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(o)}).then(function(r){ return r.json(); }); }
 function pushOk(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+// A time picked by hand wins until it has passed or a new feed starts; otherwise 3 h after the latest feed began.
 function nextDue(){
+  if (rem.manual && rem.manual > Date.now()) return rem.manual;
   var last = feeds.reduce(function(a, f){ return Math.max(a, f.s); }, 0);
   if (live) last = Math.max(last, live.s);
   return last ? last + rem.h * 3600e3 : 0;
 }
 function remRender(){
-  $('remOn').checked = rem.on; $('remOpts').hidden = !rem.on; $('remH').value = rem.h;
-  var d = nextDue();
-  $('remNext').textContent = rem.on && d > Date.now() ? 'Next reminder at ' + tstr(d) : '';
+  $('remOn').checked = rem.on; $('remOpts').hidden = !rem.on;
+  var d = nextDue(), live_ = d > Date.now();
+  if (document.activeElement !== $('remT')) $('remT').value = live_ ? tstr(d) : '';
+  $('remNext').textContent = rem.on && live_ ? 'Reminder ' + (dstr(d) === dstr(Date.now()) ? 'today' : 'tomorrow') + ' at ' + tstr(d) : (rem.on ? 'No reminder set. Pick a time or tap In 3 h.' : '');
 }
 function schedule(){
   remRender();
   if (!rem.on || !rem.sub) return;
   var d = nextDue();
-  if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'It has been ' + rem.h + ' h since the last feed started.'}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
+  if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'Time for the next feed.'}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
   else post({action: 'cancel', endpoint: rem.sub.endpoint}).catch(function(){});
 }
 function enableRem(){
@@ -262,7 +267,14 @@ $('remOn').onchange = function(){
   if (this.checked){ enableRem().then(function(ok){ if (!ok){ rem.on = false; remSave(); } remRender(); }); }
   else { rem.on = false; remSave(); if (rem.sub) post({action: 'cancel', endpoint: rem.sub.endpoint}).catch(function(){}); remRender(); }
 };
-$('remH').onchange = function(){ var h = parseFloat(this.value); rem.h = h >= 0.5 && h <= 12 ? h : 3; remSave(); schedule(); };
+// A clock time that has already passed today means that time tomorrow, so it rolls over midnight.
+$('remT').onchange = function(){
+  if (!this.value) return;
+  var t = this.value.split(':'), d = new Date(); d.setHours(+t[0], +t[1], 0, 0);
+  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  rem.manual = d.getTime(); remSave(); this.blur(); schedule();
+};
+$('rem3').onclick = function(){ rem.manual = Date.now() + 3 * 3600e3; remSave(); schedule(); };
 $('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent = 'Sending…'; post({action: 'test', sub: rem.sub}).then(function(r){ $('remMsg').textContent = r.ok ? 'Sent, it should appear in a few seconds.' : 'Failed (' + (r.error || 'unknown') + ').'; }).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service.'; }); };
 
 renderLive(); resetForm(); remRender();

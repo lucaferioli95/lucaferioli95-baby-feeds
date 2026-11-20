@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0 - 2026-11-20
+- Reminder: set the time of the next feed on a clock ("Next feed at"). A time that has already passed today means that time tomorrow, so it rolls over midnight. The "In 3 h" button is a quick reminder three hours from now.
+- Without a picked time the reminder is still 3 h after the start of the latest feed. Starting a new feed clears a picked time. The hours box is gone.
+
 ## 1.2.1 - 2026-11-20
 - New look: light cream background with a peachy rose palette (always light, no dark mode). New app icon to match.
 
