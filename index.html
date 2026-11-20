@@ -42,6 +42,12 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.foot a{color:inherit}
 .switch{display:flex;gap:10px;align-items:center;margin:0;font-size:16px;color:var(--fg)}.switch input{width:20px;height:20px}
+.call{position:fixed;inset:0;z-index:20;background:linear-gradient(#e8a89f,#d98a85);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12vh 24px 12vh;text-align:center}
+.call h2{font-size:34px;margin:10px 0 4px;font-weight:600}.call p{margin:0;opacity:.9;font-size:18px}
+.call .av{width:110px;height:110px;border-radius:50%;background:#fbf3e8;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;font-size:54px}
+.call .acts{display:flex;gap:70px}.call .acts button{width:76px;height:76px;border-radius:50%;border:0;font-size:30px;color:#fff}
+.call .no{background:#c0504d}.call .yes{background:#4caf70;animation:ringpulse 1s infinite}
+@keyframes ringpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--deep);color:#fff;padding:10px 16px;border-radius:10px;z-index:9}
 </style>
 </head>
@@ -61,6 +67,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
         <div class="row" style="align-items:end"><div><label for="remT">Next feed at</label><input id="remT" type="time"></div>
         <div style="flex:0 0 auto"><button class="btn ghost" id="rem3" type="button" style="margin:0;padding:10px 14px">In 3 h</button></div></div>
         <label class="switch" style="margin-top:12px;font-size:15px"><input type="checkbox" id="remAlarm"> Alarm style: loud vibration, stays on screen until tapped</label>
+        <label class="switch" style="margin-top:8px;font-size:15px"><input type="checkbox" id="remRing"> Ring like a call when the app is open (keeps the screen on)</label>
         <button class="linkbtn" id="remTest" type="button" style="margin-top:8px;padding-left:0">Send a test notification</button>
         <div class="sub" id="remNext" style="text-align:left;margin-top:8px"></div>
       </div>
@@ -103,9 +110,13 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 
   <p class="foot">Version <span id="ver"></span> · <a href="https://github.com/lucaferioli95/lucaferioli95-baby-feeds/blob/main/CHANGELOG.md">Changelog</a> · <span id="hostNote"></span><br>Data is stored on this device only.</p>
 </main>
+<div class="call" id="call" hidden>
+  <div><div class="av">&#127868;</div><h2>Next feed</h2><p id="callSub">incoming&hellip;</p></div>
+  <div class="acts"><button class="no" id="callNo" type="button" aria-label="Dismiss">&#10005;</button><button class="yes" id="callYes" type="button" aria-label="Answer and start a feed">&#9990;</button></div>
+</div>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '1.4.0';
+var APP_VERSION = '1.5.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -228,7 +239,7 @@ $('exportBtn').onclick = function(){
 /* next-feed notification (web push, sent by a small server job so it arrives with the app closed) */
 var PUSH_URL = 'https://jsddqdmaatosqvbdrzjo.supabase.co/functions/v1/bf-push';
 var VAPID = 'BA_-09UuzUtJEbYBt3t64pXyFOqGa7AnXgXFkZ2o5dMZFPKVm5Y_2qiWj0QGv29y5LmaJFBVb1aN2BvZpLeVnTA';
-var rem = load('bf-rem-v1', {on: false, h: 3, sub: null, manual: null, alarm: false});
+var rem = load('bf-rem-v1', {on: false, h: 3, sub: null, manual: null, alarm: false, ring: false, rung: 0});
 rem.h = 3;
 function remSave(){ save('bf-rem-v1', rem); }
 function b64(s){ var p = '='.repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, function(c){ return c.charCodeAt(0); }); }
@@ -242,13 +253,13 @@ function nextDue(){
   return last ? last + rem.h * 3600e3 : 0;
 }
 function remRender(){
-  $('remOn').checked = rem.on; $('remAlarm').checked = !!rem.alarm; $('remOpts').hidden = !rem.on;
+  $('remOn').checked = rem.on; $('remRing').checked = !!rem.ring; $('remAlarm').checked = !!rem.alarm; $('remOpts').hidden = !rem.on;
   var d = nextDue(), live_ = d > Date.now();
   if (document.activeElement !== $('remT')) $('remT').value = live_ ? tstr(d) : '';
   $('remNext').textContent = rem.on && live_ ? 'Reminder ' + (dstr(d) === dstr(Date.now()) ? 'today' : 'tomorrow') + ' at ' + tstr(d) : (rem.on ? 'No reminder set. Pick a time or tap In 3 h.' : '');
 }
 function schedule(){
-  remRender();
+  remRender(); if (typeof armRing === 'function') armRing();
   if (!rem.on || !rem.sub) return;
   var d = nextDue();
   if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'Time for the next feed.', alarm: !!rem.alarm}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
@@ -279,7 +290,48 @@ $('remAlarm').onchange = function(){ rem.alarm = this.checked; remSave(); schedu
 $('rem3').onclick = function(){ rem.manual = Date.now() + 3 * 3600e3; remSave(); schedule(); };
 $('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent = 'Sending…'; post({action: 'test', sub: rem.sub, alarm: !!rem.alarm}).then(function(r){ $('remMsg').textContent = r.ok ? 'Sent, it should appear in a few seconds.' : 'Failed (' + (r.error || 'unknown') + ').'; }).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service.'; }); };
 
-renderLive(); resetForm(); remRender();
+/* fake call: a ringing screen with a looping ring tone. Only works while the app is open and on screen (a web page cannot ring in the background). */
+var ac = null, ringT = null, ringStop = null, wake = null;
+function audio(){ try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch(e){} return ac; }
+['pointerdown','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, function(){ if (rem.ring) audio(); }, {passive: true}); });
+function burst(t){ var c = ac; [440, 480].forEach(function(f){ var o = c.createOscillator(), g = c.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.25, t + 0.03); g.gain.setValueAtTime(0.25, t + 0.9); g.gain.linearRampToValueAtTime(0, t + 1); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 1.05); }); }
+function ringNow(){
+  if (!$('call').hidden) return;
+  rem.rung = Date.now(); remSave();
+  $('call').hidden = false; $('callSub').textContent = 'incoming…';
+  var c = audio();
+  function pulse(){ if (c && c.state === 'running'){ burst(c.currentTime); burst(c.currentTime + 1.2); } try { navigator.vibrate && navigator.vibrate([800, 400, 800]); } catch(e){} }
+  pulse(); ringT = setInterval(pulse, 3500);
+  ringStop = setTimeout(endRing, 60000);
+}
+function endRing(){ clearInterval(ringT); clearTimeout(ringStop); ringT = ringStop = null; $('call').hidden = true; try { navigator.vibrate && navigator.vibrate(0); } catch(e){} }
+$('callNo').onclick = endRing;
+$('callYes').onclick = function(){ endRing(); if (!live) $('startBtn').click(); tab('live'); };
+var ringTimer = null;
+function armRing(){
+  clearTimeout(ringTimer); ringTimer = null;
+  if (!rem.ring || !rem.on) return;
+  var d = nextDue(), ms = d - Date.now();
+  if (d && ms > 0 && ms < 2147e6) ringTimer = setTimeout(function(){ if (rem.on && rem.ring) ringNow(); }, ms);
+}
+function wantWake(){
+  try {
+    if (!navigator.wakeLock) return;
+    if (rem.ring && rem.on && document.visibilityState === 'visible'){ if (!wake) navigator.wakeLock.request('screen').then(function(l){ wake = l; l.addEventListener('release', function(){ wake = null; }); }).catch(function(){}); }
+    else if (wake){ wake.release(); wake = null; }
+  } catch(e){}
+}
+document.addEventListener('visibilitychange', function(){ wantWake(); armRing(); checkMissed(); });
+// opened from the notification or after the screen was off: ring if the reminder came due in the last 10 minutes and has not rung yet
+function checkMissed(){
+  var d = nextDue(), now = Date.now();
+  if (rem.ring && rem.on && d && d <= now && now - d < 600e3 && rem.rung < d) ringNow();
+}
+$('remRing').onchange = function(){ rem.ring = this.checked; remSave(); if (rem.ring) audio(); armRing(); wantWake(); };
+navigator.serviceWorker && navigator.serviceWorker.addEventListener && navigator.serviceWorker.addEventListener('message', function(e){ if (e.data === 'ring') checkMissed(); });
+if (/[?&]ring=1/.test(location.search)) setTimeout(checkMissed, 300);
+
+renderLive(); resetForm(); remRender(); armRing(); wantWake();
 setInterval(function(){ if (!$('live').hidden && !live) renderLive(); }, 60000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>

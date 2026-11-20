@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.0 - 2026-11-20
+- Ring like a call (optional switch under the reminder): when the reminder comes due and the app is open on screen, a full-screen incoming-call page appears with a looping ring tone and vibration. Answer starts a feed, the red button dismisses it. It also rings when you open the app from the notification within 10 minutes of the due time. The screen is kept on while the app is open and the switch is on.
+- Limit: a web page cannot ring in the background or with the screen off; the notification covers that case.
+
 ## 1.4.0 - 2026-11-20
 - Alarm style (optional switch under the reminder): the notification is sent as high priority, vibrates in a long pattern and stays on screen until you tap it. A web app cannot ring like the phone's own alarm clock or get past Do Not Disturb, so the sound is the phone's notification sound.
 
