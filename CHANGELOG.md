@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.0 - 2026-11-20
+- Alarm style (optional switch under the reminder): the notification is sent as high priority, vibrates in a long pattern and stays on screen until you tap it. A web app cannot ring like the phone's own alarm clock or get past Do Not Disturb, so the sound is the phone's notification sound.
+
 ## 1.3.0 - 2026-11-20
 - Reminder: set the time of the next feed on a clock ("Next feed at"). A time that has already passed today means that time tomorrow, so it rolls over midnight. The "In 3 h" button is a quick reminder three hours from now.
 - Without a picked time the reminder is still 3 h after the start of the latest feed. Starting a new feed clears a picked time. The hours box is gone.

@@ -60,6 +60,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
       <div id="remOpts" hidden>
         <div class="row" style="align-items:end"><div><label for="remT">Next feed at</label><input id="remT" type="time"></div>
         <div style="flex:0 0 auto"><button class="btn ghost" id="rem3" type="button" style="margin:0;padding:10px 14px">In 3 h</button></div></div>
+        <label class="switch" style="margin-top:12px;font-size:15px"><input type="checkbox" id="remAlarm"> Alarm style: loud vibration, stays on screen until tapped</label>
         <button class="linkbtn" id="remTest" type="button" style="margin-top:8px;padding-left:0">Send a test notification</button>
         <div class="sub" id="remNext" style="text-align:left;margin-top:8px"></div>
       </div>
@@ -104,7 +105,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 </main>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '1.3.0';
+var APP_VERSION = '1.4.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -227,7 +228,7 @@ $('exportBtn').onclick = function(){
 /* next-feed notification (web push, sent by a small server job so it arrives with the app closed) */
 var PUSH_URL = 'https://jsddqdmaatosqvbdrzjo.supabase.co/functions/v1/bf-push';
 var VAPID = 'BA_-09UuzUtJEbYBt3t64pXyFOqGa7AnXgXFkZ2o5dMZFPKVm5Y_2qiWj0QGv29y5LmaJFBVb1aN2BvZpLeVnTA';
-var rem = load('bf-rem-v1', {on: false, h: 3, sub: null, manual: null});
+var rem = load('bf-rem-v1', {on: false, h: 3, sub: null, manual: null, alarm: false});
 rem.h = 3;
 function remSave(){ save('bf-rem-v1', rem); }
 function b64(s){ var p = '='.repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, function(c){ return c.charCodeAt(0); }); }
@@ -241,7 +242,7 @@ function nextDue(){
   return last ? last + rem.h * 3600e3 : 0;
 }
 function remRender(){
-  $('remOn').checked = rem.on; $('remOpts').hidden = !rem.on;
+  $('remOn').checked = rem.on; $('remAlarm').checked = !!rem.alarm; $('remOpts').hidden = !rem.on;
   var d = nextDue(), live_ = d > Date.now();
   if (document.activeElement !== $('remT')) $('remT').value = live_ ? tstr(d) : '';
   $('remNext').textContent = rem.on && live_ ? 'Reminder ' + (dstr(d) === dstr(Date.now()) ? 'today' : 'tomorrow') + ' at ' + tstr(d) : (rem.on ? 'No reminder set. Pick a time or tap In 3 h.' : '');
@@ -250,7 +251,7 @@ function schedule(){
   remRender();
   if (!rem.on || !rem.sub) return;
   var d = nextDue();
-  if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'Time for the next feed.'}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
+  if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'Time for the next feed.', alarm: !!rem.alarm}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
   else post({action: 'cancel', endpoint: rem.sub.endpoint}).catch(function(){});
 }
 function enableRem(){
@@ -274,8 +275,9 @@ $('remT').onchange = function(){
   if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
   rem.manual = d.getTime(); remSave(); this.blur(); schedule();
 };
+$('remAlarm').onchange = function(){ rem.alarm = this.checked; remSave(); schedule(); };
 $('rem3').onclick = function(){ rem.manual = Date.now() + 3 * 3600e3; remSave(); schedule(); };
-$('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent = 'Sending…'; post({action: 'test', sub: rem.sub}).then(function(r){ $('remMsg').textContent = r.ok ? 'Sent, it should appear in a few seconds.' : 'Failed (' + (r.error || 'unknown') + ').'; }).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service.'; }); };
+$('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent = 'Sending…'; post({action: 'test', sub: rem.sub, alarm: !!rem.alarm}).then(function(r){ $('remMsg').textContent = r.ok ? 'Sent, it should appear in a few seconds.' : 'Failed (' + (r.error || 'unknown') + ').'; }).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service.'; }); };
 
 renderLive(); resetForm(); remRender();
 setInterval(function(){ if (!$('live').hidden && !live) renderLive(); }, 60000);

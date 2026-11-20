@@ -1,4 +1,4 @@
-const CACHE = "baby-feeds-v5";
+const CACHE = "baby-feeds-v6";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./install.js", "./icon-192.png", "./icon-512.png", "./icon-180.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -8,7 +8,7 @@ self.addEventListener("fetch", e => {
 });
 self.addEventListener("push", e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (_) {}
-  e.waitUntil(self.registration.showNotification(d.title || "Next feed", { body: d.body || "It is time for the next feed.", icon: "icon-192.png", badge: "icon-192.png", tag: "next-feed", renotify: true }));
+  e.waitUntil(self.registration.showNotification(d.title || "Next feed", { body: d.body || "It is time for the next feed.", icon: "icon-192.png", badge: "icon-192.png", tag: "next-feed", renotify: true, requireInteraction: !!d.alarm, vibrate: d.alarm ? [600, 250, 600, 250, 600, 250, 600, 250, 600] : [200] }));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
