@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Baby Feeds</title>
-<meta name="theme-color" content="#fff7f2">
+<meta name="theme-color" content="#fbf3e8">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
-:root{--bg:#fff7f2;--surface:#fff;--fg:#2b2320;--muted:#8a7a72;--line:#eadbd3;--accent:#e58b78;--accent-fg:#fff;--ok:#5b9a72}
-@media (prefers-color-scheme:dark){:root{--bg:#1c1715;--surface:#262020;--fg:#f3e9e4;--muted:#a39189;--line:#3a302d;--accent:#e58b78;--accent-fg:#1c1715;--ok:#7cc096}}
+:root{--bg:#fbf3e8;--surface:#fffaf4;--fg:#4a3434;--muted:#9b807a;--line:#efdcd0;--accent:#d98a85;--accent-fg:#fff;--ok:#7aa38a;--deep:#8c5a5a}
+:root{color-scheme:light}
 [hidden]{display:none!important}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
@@ -22,7 +22,7 @@ h1{font-size:18px;margin:0}
 .tab{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:12px 0;font:inherit;font-weight:600;color:var(--muted)}
 .tab.on{color:var(--fg);border-bottom-color:var(--accent)}
 .big{display:block;width:100%;border:0;border-radius:20px;background:var(--accent);color:var(--accent-fg);font:inherit;font-size:22px;font-weight:700;padding:34px 0;margin:10px 0}
-.big.stop{background:var(--fg);color:var(--bg)}
+.big.stop{background:var(--deep);color:#fff}
 .clock{text-align:center;font-size:56px;font-weight:300;font-variant-numeric:tabular-nums;margin:18px 0 0}
 .sub{text-align:center;color:var(--muted);font-size:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
@@ -34,7 +34,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .btn{display:block;width:100%;border:0;border-radius:12px;background:var(--accent);color:var(--accent-fg);font:inherit;font-weight:700;padding:14px;margin-top:14px}
 .btn.ghost{background:none;border:1px solid var(--line);color:var(--fg)}
-.btn.del{background:none;color:#c0392b;border:1px solid var(--line)}
+.btn.del{background:none;color:#b5524f;border:1px solid var(--line)}
 .day{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 6px;font-weight:700}
 .day span{font-weight:400;font-size:13px;color:var(--muted)}
 .item{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--surface);color:inherit;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0;font:inherit}
@@ -42,7 +42,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.foot a{color:inherit}
 .switch{display:flex;gap:10px;align-items:center;margin:0;font-size:16px;color:var(--fg)}.switch input{width:20px;height:20px}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:9}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--deep);color:#fff;padding:10px 16px;border-radius:10px;z-index:9}
 </style>
 </head>
 <body>
@@ -103,7 +103,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 </main>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '1.2.0';
+var APP_VERSION = '1.2.1';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
