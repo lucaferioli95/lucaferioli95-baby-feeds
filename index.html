@@ -55,6 +55,8 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
     <div class="sub" id="startedAt" hidden></div>
     <button class="big" id="startBtn" type="button">Start feed</button>
     <div class="card" id="stopCard" hidden>
+      <label>Breast</label>
+      <div class="chips sides" id="liveSides"></div>
       <label for="liveMl">Top-up (ml)</label>
       <input id="liveMl" type="number" inputmode="numeric" min="0" placeholder="0">
       <div class="chips" data-for="liveMl"></div>
@@ -71,6 +73,8 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
         <div><label for="fStart">Start</label><input id="fStart" type="time"></div>
         <div><label for="fEnd">End</label><input id="fEnd" type="time"></div>
       </div>
+      <label>Breast</label>
+      <div class="chips sides" id="fSides"></div>
       <label for="fMl">Top-up (ml)</label>
       <input id="fMl" type="number" inputmode="numeric" min="0" placeholder="0">
       <div class="chips" data-for="fMl"></div>
@@ -89,7 +93,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 </main>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '1.0.0';
+var APP_VERSION = '1.1.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -97,6 +101,7 @@ function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e
 var feeds = load(KEY, []);       // {id, s, e (ms), ml}
 var live = load(LIVE, null);     // {s} while a feed is running
 var editing = null;
+var liveSide = '', formSide = '';
 $('ver').textContent = APP_VERSION;
 
 function pad(n){ return (n < 10 ? '0' : '') + n; }
@@ -120,9 +125,27 @@ function tab(name){
 }
 document.querySelectorAll('.tab').forEach(function(b){ b.onclick = function(){ if (b.dataset.tab !== 'add') editing = null; tab(b.dataset.tab); }; });
 
+/* breast side: tap Left, Right or both */
+function sideChips(box, get, set){
+  box.innerHTML = '';
+  [['L','Left'],['R','Right']].forEach(function(x){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = x[1]; b.dataset.k = x[0];
+    b.onclick = function(){ var v = get(); v = v.indexOf(x[0]) >= 0 ? v.replace(x[0], '') : (v + x[0]).split('').sort().reverse().join(''); set(v); paintSides(); };
+    box.appendChild(b);
+  });
+}
+function paintSides(){
+  [['liveSides', liveSide], ['fSides', formSide]].forEach(function(p){
+    $(p[0]).querySelectorAll('.chip').forEach(function(b){ b.classList.toggle('on', p[1].indexOf(b.dataset.k) >= 0); });
+  });
+}
+function sideTxt(v){ return v === 'LR' || v === 'RL' ? 'L+R' : v; }
+sideChips($('liveSides'), function(){ return liveSide; }, function(v){ liveSide = v; if (live){ live.side = v; save(LIVE, live); } });
+sideChips($('fSides'), function(){ return formSide; }, function(v){ formSide = v; });
+
 /* chips */
 [30,60,90,120].forEach(function(n){
-  document.querySelectorAll('.chips').forEach(function(c){
+  document.querySelectorAll('.chips:not(.sides)').forEach(function(c){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.onclick = function(){ $(c.dataset.for).value = n; };
     c.appendChild(b);
   });
@@ -133,16 +156,16 @@ var timer = null;
 function renderLive(){
   var run = !!live;
   $('startBtn').hidden = run; $('stopCard').hidden = !run; $('clock').hidden = !run; $('startedAt').hidden = !run;
-  if (run){ $('startedAt').textContent = 'Started ' + tstr(live.s); tick(); if (!timer) timer = setInterval(tick, 1000); }
+  if (run){ liveSide = live.side || ''; paintSides(); $('startedAt').textContent = 'Started ' + tstr(live.s); tick(); if (!timer) timer = setInterval(tick, 1000); }
   else { clearInterval(timer); timer = null; }
   var last = feeds.length ? feeds.reduce(function(a,b){ return b.s > a.s ? b : a; }) : null;
   $('lastFeed').textContent = last ? 'Last feed ' + dur(Date.now() - last.s) + ' ago (' + tstr(last.s) + ')' : 'No feeds yet';
 }
 function tick(){ var s = Math.max(0, Math.floor((Date.now() - live.s) / 1000)); $('clock').textContent = pad(Math.floor(s/60)) + ':' + pad(s % 60); if (s >= 3600) $('clock').textContent = Math.floor(s/3600) + ':' + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
-$('startBtn').onclick = function(){ live = {s: Date.now()}; save(LIVE, live); $('liveMl').value = ''; renderLive(); };
+$('startBtn').onclick = function(){ live = {s: Date.now(), side: ''}; liveSide = ''; save(LIVE, live); $('liveMl').value = ''; renderLive(); };
 $('stopBtn').onclick = function(){
   var ml = parseInt($('liveMl').value, 10) || 0;
-  feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: live.s, e: Date.now(), ml: ml});
+  feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: live.s, e: Date.now(), ml: ml, side: liveSide});
   save(KEY, feeds); live = null; localStorage.removeItem(LIVE); renderLive(); toast('Saved');
 };
 $('cancelBtn').onclick = function(){ if (confirm('Discard this feed?')){ live = null; localStorage.removeItem(LIVE); renderLive(); } };
@@ -150,7 +173,7 @@ $('cancelBtn').onclick = function(){ if (confirm('Discard this feed?')){ live = 
 /* add / edit */
 function resetForm(){
   var n = Date.now();
-  $('formTitle').textContent = 'Add a feed'; $('fDate').value = dstr(n); $('fStart').value = tstr(n - 15*60000); $('fEnd').value = tstr(n); $('fMl').value = '';
+  $('formTitle').textContent = 'Add a feed'; $('fDate').value = dstr(n); $('fStart').value = tstr(n - 15*60000); $('fEnd').value = tstr(n); $('fMl').value = ''; formSide = ''; paintSides();
   $('delBtn').hidden = true; $('cancelEdit').hidden = true;
 }
 $('saveBtn').onclick = function(){
@@ -160,8 +183,8 @@ $('saveBtn').onclick = function(){
   if (e < s) e += 864e5;                       // finished after midnight
   if (e - s > 6 * 3600e3){ toast('That is over 6 hours, check the times'); return; }
   var ml = parseInt($('fMl').value, 10) || 0;
-  if (editing){ var f = feeds.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; } }
-  else feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: s, e: e, ml: ml});
+  if (editing){ var f = feeds.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; f.side = formSide; } }
+  else feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: s, e: e, ml: ml, side: formSide});
   save(KEY, feeds); editing = null; toast('Saved'); resetForm(); tab('hist');
 };
 $('delBtn').onclick = function(){ if (editing && confirm('Delete this feed?')){ feeds = feeds.filter(function(x){ return x.id !== editing; }); save(KEY, feeds); editing = null; tab('hist'); } };
@@ -169,7 +192,7 @@ $('cancelEdit').onclick = function(){ editing = null; tab('hist'); };
 function edit(id){
   var f = feeds.find(function(x){ return x.id === id; }); if (!f) return;
   editing = id; tab('add');
-  $('formTitle').textContent = 'Edit feed'; $('fDate').value = dstr(f.s); $('fStart').value = tstr(f.s); $('fEnd').value = tstr(f.e); $('fMl').value = f.ml || '';
+  $('formTitle').textContent = 'Edit feed'; $('fDate').value = dstr(f.s); $('fStart').value = tstr(f.s); $('fEnd').value = tstr(f.e); $('fMl').value = f.ml || ''; formSide = f.side || ''; paintSides();
   $('delBtn').hidden = false; $('cancelEdit').hidden = false;
 }
 
@@ -181,12 +204,12 @@ function renderHist(){
   $('histList').innerHTML = Object.keys(days).sort().reverse().map(function(k){
     var L = days[k], mins = L.reduce(function(a,f){ return a + (f.e - f.s) / 60000; }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
     return '<div class="day">' + dayLabel(k) + '<span>' + L.length + ' feeds · ' + Math.round(mins) + ' min' + (ml ? ' · ' + ml + ' ml' : '') + '</span></div>' +
-      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + '</small></span><span>' + (f.ml ? '+' + f.ml + ' ml' : '') + '</span></button>'; }).join('');
+      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + f.ml + ' ml' : '') + '</span></button>'; }).join('');
   }).join('');
 }
 $('histList').onclick = function(e){ var b = e.target.closest('.item'); if (b) edit(b.dataset.id); };
 $('exportBtn').onclick = function(){
-  var rows = ['Date,Start,End,Minutes,TopUp_ml'].concat(feeds.slice().sort(function(a,b){ return a.s - b.s; }).map(function(f){ return [dstr(f.s), tstr(f.s), tstr(f.e), Math.round((f.e - f.s)/60000), f.ml || 0].join(','); }));
+  var rows = ['Date,Start,End,Minutes,Breast,TopUp_ml'].concat(feeds.slice().sort(function(a,b){ return a.s - b.s; }).map(function(f){ return [dstr(f.s), tstr(f.s), tstr(f.e), Math.round((f.e - f.s)/60000), sideTxt(f.side || ''), f.ml || 0].join(','); }));
   var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'})); a.download = 'baby-feeds-' + dstr(Date.now()) + '.csv'; a.click();
 };
 
