@@ -119,7 +119,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.1.0';
+var APP_VERSION = '2.1.1';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -340,12 +340,13 @@ $('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent
 /* shared history: Google sign-in (same allow-list as the Family Planner) + merge by id, newest change wins */
 var SB_URL = 'https://jsddqdmaatosqvbdrzjo.supabase.co';
 var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzZGRxZG1hYXRvc3F2YmRyempvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0OTkwMTEsImV4cCI6MjEwMzA3NTAxMX0.sHI2j5w3xjRJhkD9EUqU2l1ZxgW164DqyIdEyGGgAXs';
-var sb = null, sess = null, syncing = false, syncTmr = null, again = false, lastSync = 0, syncErr = false;
+var sb = null, sess = null, syncing = false, syncTmr = null, again = false, lastSync = 0, syncErr = false, syncMsg = '';
 function esc(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function gate(html){ $('gate').hidden = !html; $('gate').innerHTML = html || ''; $('app').hidden = !!html; }
 function paintSync(){
   var el = $('syncUi'); if (!sess){ el.textContent = 'Data is also kept on this device.'; return; }
-  el.innerHTML = esc((sess.user.email || '').split('@')[0]) + ' · ' + (syncErr ? 'offline, will sync later' : lastSync ? 'synced ' + tstr(lastSync) : 'syncing…') + ' · <a href="#" id="signOutLink">Sign out</a>';
+  el.innerHTML = esc((sess.user.email || '').split('@')[0]) + ' · ' + (syncErr ? (navigator.onLine ? 'sync problem' + (syncMsg ? ' (' + esc(syncMsg) + ')' : '') : 'offline, will sync later') + ' · <a href="#" id="syncNow">Retry</a>' : lastSync ? 'synced ' + tstr(lastSync) + ' · <a href="#" id="syncNow">Sync now</a>' : 'syncing…') + ' · <a href="#" id="signOutLink">Sign out</a>';
+  if ($('syncNow')) $('syncNow').onclick = function(e){ e.preventDefault(); sync(); };
   $('signOutLink').onclick = function(e){ e.preventDefault(); sb.auth.signOut().then(function(){ location.reload(); }); };
 }
 function toRow(f){ return {id: f.id, s: f.s, e: f.e, ml: f.ml || 0, side: f.side || '', t: f.t || f.s, deleted: !!f.del}; }
@@ -368,8 +369,8 @@ async function sync(){
     store.forEach(function(f){ var x = remote[f.id]; if (!x || (f.t || 0) > Number(x.t)) up.push(toRow(f)); });
     if (up.length){ var u = await sb.from('bf_feeds').upsert(up); if (u.error) throw u.error; }
     if (changed) commit(false);
-    lastSync = Date.now(); syncErr = false;
-  } catch(e){ syncErr = true; }
+    lastSync = Date.now(); syncErr = false; syncMsg = '';
+  } catch(e){ syncErr = true; syncMsg = (e && (e.message || e.code)) || ''; }
   syncing = false; paintSync();
   if (again){ again = false; syncSoon(); }
 }

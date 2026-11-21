@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1 - 2026-11-21
+- Fix: new feeds were not reaching the shared history. A database rule rejected every save of a new feed, so each phone kept its own copy. The rule is fixed on the server; feeds already on a phone upload the next time the app is open.
+- The footer now says "sync problem" with the reason (instead of always saying offline) and has a Sync now / Retry link.
+
 ## 2.1.0 - 2026-11-21
 - History: each day is a drop-down with a one-line summary (feeds, minutes, top-up). Today is open by default and the other days are closed. Days you open or close stay that way while the list refreshes.
 
