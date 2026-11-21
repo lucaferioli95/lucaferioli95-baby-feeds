@@ -66,7 +66,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
       <label>Breast</label>
       <div class="chips sides" id="liveSides"></div>
       <label for="liveMl">Top-up (ml)</label>
-      <input id="liveMl" type="number" inputmode="numeric" min="0" placeholder="0">
+      <input id="liveMl" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0">
       <div class="chips" data-for="liveMl"></div>
       <button class="big stop" id="stopBtn" type="button" style="font-size:20px;padding:20px 0">Stop &amp; save</button>
       <button class="btn ghost" id="cancelBtn" type="button">Cancel this feed</button>
@@ -99,7 +99,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
       <label>Breast</label>
       <div class="chips sides" id="fSides"></div>
       <label for="fMl">Top-up (ml)</label>
-      <input id="fMl" type="number" inputmode="numeric" min="0" placeholder="0">
+      <input id="fMl" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0">
       <div class="chips" data-for="fMl"></div>
       <button class="btn" id="saveBtn" type="button">Save</button>
       <button class="btn del" id="delBtn" type="button" hidden>Delete this feed</button>
@@ -117,7 +117,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.0.0';
+var APP_VERSION = '2.0.1';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -140,6 +140,8 @@ function dayLabel(key){
   var p = key.split('-'); return new Date(p[0], p[1]-1, p[2]).toLocaleDateString(undefined, {weekday:'short', day:'numeric', month:'short', year:'numeric'});
 }
 function toast(m){ var t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 1800); }
+function mlv(v){ var n = parseFloat(String(v).replace(',', '.')); return isFinite(n) && n > 0 ? Math.round(n * 10) / 10 : 0; }
+function fm(n){ return String(Math.round(n * 10) / 10); }
 function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 // Save locally, refresh the screen and (when signed in) sync with the other phone
 function commit(push){
@@ -177,7 +179,7 @@ sideChips($('liveSides'), function(){ return liveSide; }, function(v){ liveSide 
 sideChips($('fSides'), function(){ return formSide; }, function(v){ formSide = v; });
 
 /* chips */
-[30,60,90,120].forEach(function(n){
+[1,3].forEach(function(n){
   document.querySelectorAll('.chips:not(.sides)').forEach(function(c){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.onclick = function(){ $(c.dataset.for).value = n; };
     c.appendChild(b);
@@ -213,7 +215,7 @@ function renderDash(){
   var T = [
     [cur.length, 'feeds · ' + cmp + ' ' + prev.length],
     [cur.length ? mins(tm) : '–', 'at the breast'],
-    [ml ? ml + ' ml' : '–', 'top-up'],
+    [ml ? fm(ml) + ' ml' : '–', 'top-up'],
     [gaps.length ? mins(avg) : '–', 'average gap'],
     [gaps.length ? mins(longest) : '–', 'longest gap'],
     [next, 'start on next · L ' + cnt('L') + ' / R ' + cnt('R')]
@@ -222,13 +224,13 @@ function renderDash(){
   // a typical day from the last 7 days that have feeds (today left out)
   var by = {}; feeds.filter(function(f){ return f.s >= d0.getTime() - 7 * 864e5 && f.s < d0.getTime(); }).forEach(function(f){ var k = dstr(f.s); by[k] = by[k] || {n: 0, ml: 0}; by[k].n++; by[k].ml += f.ml || 0; });
   var ks = Object.keys(by);
-  $('typical').textContent = ks.length ? 'Typical day (last ' + ks.length + ' with feeds): ' + Math.round(ks.reduce(function(a, k){ return a + by[k].n; }, 0) / ks.length * 10) / 10 + ' feeds, ' + Math.round(ks.reduce(function(a, k){ return a + by[k].ml; }, 0) / ks.length) + ' ml top-up' : '';
+  $('typical').textContent = ks.length ? 'Typical day (last ' + ks.length + ' with feeds): ' + Math.round(ks.reduce(function(a, k){ return a + by[k].n; }, 0) / ks.length * 10) / 10 + ' feeds, ' + fm(ks.reduce(function(a, k){ return a + by[k].ml; }, 0) / ks.length) + ' ml top-up' : '';
 }
 document.querySelectorAll('#dash .seg button').forEach(function(b){ b.onclick = function(){ dmode = b.dataset.m; try { localStorage.setItem('bf-dmode', dmode); } catch(e){} renderDash(); }; });
 function tick(){ var s = Math.max(0, Math.floor((Date.now() - live.s) / 1000)); $('clock').textContent = pad(Math.floor(s/60)) + ':' + pad(s % 60); if (s >= 3600) $('clock').textContent = Math.floor(s/3600) + ':' + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
 $('startBtn').onclick = function(){ live = {s: Date.now(), side: ''}; liveSide = ''; save(LIVE, live); $('liveMl').value = ''; renderLive(); rem.manual = null; remSave(); schedule(); };
 $('stopBtn').onclick = function(){
-  var ml = parseInt($('liveMl').value, 10) || 0;
+  var ml = mlv($('liveMl').value);
   store.push({id: newId(), s: live.s, e: Date.now(), ml: ml, side: liveSide, t: Date.now()});
   live = null; localStorage.removeItem(LIVE); commit(); toast('Saved'); schedule();
 };
@@ -246,7 +248,7 @@ $('saveBtn').onclick = function(){
   var s = toMs(date, st), e = toMs(date, en);
   if (e < s) e += 864e5;                       // finished after midnight
   if (e - s > 6 * 3600e3){ toast('That is over 6 hours, check the times'); return; }
-  var ml = parseInt($('fMl').value, 10) || 0;
+  var ml = mlv($('fMl').value);
   if (editing){ var f = store.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; f.side = formSide; f.t = Date.now(); } }
   else store.push({id: newId(), s: s, e: e, ml: ml, side: formSide, t: Date.now()});
   commit(); editing = null; toast('Saved'); resetForm(); tab('hist'); schedule();
@@ -267,8 +269,8 @@ function renderHist(){
   feeds.slice().sort(function(a,b){ return b.s - a.s; }).forEach(function(f){ (days[dstr(f.s)] = days[dstr(f.s)] || []).push(f); });
   $('histList').innerHTML = Object.keys(days).sort().reverse().map(function(k){
     var L = days[k], mins = L.reduce(function(a,f){ return a + (f.e - f.s) / 60000; }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
-    return '<div class="day">' + dayLabel(k) + '<span>' + L.length + ' feeds · ' + Math.round(mins) + ' min' + (ml ? ' · ' + ml + ' ml' : '') + '</span></div>' +
-      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + f.ml + ' ml' : '') + '</span></button>'; }).join('');
+    return '<div class="day">' + dayLabel(k) + '<span>' + L.length + ' feeds · ' + Math.round(mins) + ' min' + (ml ? ' · ' + fm(ml) + ' ml' : '') + '</span></div>' +
+      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('');
   }).join('');
 }
 $('histList').onclick = function(e){ var b = e.target.closest('.item'); if (b) edit(b.dataset.id); };
@@ -355,8 +357,8 @@ async function sync(){
     store.forEach(function(f){ local[f.id] = f; });
     r.data.forEach(function(x){
       var f = local[x.id];
-      if (!f){ store.push({id: x.id, s: Number(x.s), e: Number(x.e), ml: x.ml, side: x.side, t: Number(x.t), del: x.deleted}); changed = true; }
-      else if (Number(x.t) > (f.t || 0)){ f.s = Number(x.s); f.e = Number(x.e); f.ml = x.ml; f.side = x.side; f.t = Number(x.t); f.del = x.deleted; changed = true; }
+      if (!f){ store.push({id: x.id, s: Number(x.s), e: Number(x.e), ml: Number(x.ml) || 0, side: x.side, t: Number(x.t), del: x.deleted}); changed = true; }
+      else if (Number(x.t) > (f.t || 0)){ f.s = Number(x.s); f.e = Number(x.e); f.ml = Number(x.ml) || 0; f.side = x.side; f.t = Number(x.t); f.del = x.deleted; changed = true; }
     });
     store.forEach(function(f){ var x = remote[f.id]; if (!x || (f.t || 0) > Number(x.t)) up.push(toRow(f)); });
     if (up.length){ var u = await sb.from('bf_feeds').upsert(up); if (u.error) throw u.error; }

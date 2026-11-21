@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.1 - 2026-11-21
+- Top-up accepts one decimal digit (for example 2.5 ml). The quick buttons are now 1 and 3 ml. Totals and the CSV show one decimal where needed.
+
 ## 2.0.0 - 2026-11-21
 - Shared history: sign in with Google (same allow-list as the Family Planner, so only you and Alice) and both phones see the same feeds. It still works offline and syncs when back online. Edits and deletes sync too. Feeds already on a phone are added to the shared history the first time it signs in.
 - Reminders follow the shared history: a feed logged on either phone moves the reminder on both phones.
