@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.0 - 2026-11-21
+- History: each day is a drop-down with a one-line summary (feeds, minutes, top-up). Today is open by default and the other days are closed. Days you open or close stay that way while the list refreshes.
+
 ## 2.0.1 - 2026-11-21
 - Top-up accepts one decimal digit (for example 2.5 ml). The quick buttons are now 1 and 3 ml. Totals and the CSV show one decimal where needed.
 

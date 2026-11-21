@@ -35,7 +35,9 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .btn{display:block;width:100%;border:0;border-radius:12px;background:var(--accent);color:var(--accent-fg);font:inherit;font-weight:700;padding:14px;margin-top:14px}
 .btn.ghost{background:none;border:1px solid var(--line);color:var(--fg)}
 .btn.del{background:none;color:#b5524f;border:1px solid var(--line)}
-.day{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 6px;font-weight:700}
+.dayd{margin:8px 0}.dayd[open]{margin-bottom:14px}
+.day{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;font-weight:700;cursor:pointer;list-style:none}
+.day::-webkit-details-marker{display:none}.day .dl::before{content:'\25B8';display:inline-block;margin-right:8px;color:var(--accent);transition:transform .15s}.dayd[open] .day .dl::before{transform:rotate(90deg)}
 .day span{font-weight:400;font-size:13px;color:var(--muted)}
 .item{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--surface);color:inherit;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0;font:inherit}
 .item b{font-variant-numeric:tabular-nums}.item small{color:var(--muted)}
@@ -117,7 +119,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.0.1';
+var APP_VERSION = '2.1.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -263,16 +265,19 @@ function edit(id){
 }
 
 /* history */
+var openDays = {};   // days the user opened or closed by hand; today is open unless closed
 function renderHist(){
   if (!feeds.length){ $('histList').innerHTML = '<div class="empty">No feeds yet.</div>'; return; }
   var days = {};
   feeds.slice().sort(function(a,b){ return b.s - a.s; }).forEach(function(f){ (days[dstr(f.s)] = days[dstr(f.s)] || []).push(f); });
   $('histList').innerHTML = Object.keys(days).sort().reverse().map(function(k){
     var L = days[k], mins = L.reduce(function(a,f){ return a + (f.e - f.s) / 60000; }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
-    return '<div class="day">' + dayLabel(k) + '<span>' + L.length + ' feeds · ' + Math.round(mins) + ' min' + (ml ? ' · ' + fm(ml) + ' ml' : '') + '</span></div>' +
-      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('');
+    var isOpen = k in openDays ? openDays[k] : k === dstr(Date.now());
+    return '<details class="dayd" data-k="' + k + '"' + (isOpen ? ' open' : '') + '><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + L.length + (L.length === 1 ? ' feed' : ' feeds') + ' · ' + Math.round(mins) + ' min' + (ml ? ' · ' + fm(ml) + ' ml' : '') + '</span></summary>' +
+      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('') + '</details>';
   }).join('');
 }
+$('histList').addEventListener('toggle', function(e){ var d = e.target; if (d.dataset && d.dataset.k) openDays[d.dataset.k] = d.open; }, true);
 $('histList').onclick = function(e){ var b = e.target.closest('.item'); if (b) edit(b.dataset.id); };
 $('exportBtn').onclick = function(){
   var rows = ['Date,Start,End,Minutes,Breast,TopUp_ml'].concat(feeds.slice().sort(function(a,b){ return a.s - b.s; }).map(function(f){ return [dstr(f.s), tstr(f.s), tstr(f.e), Math.round((f.e - f.s)/60000), sideTxt(f.side || ''), f.ml || 0].join(','); }));
