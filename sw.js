@@ -1,5 +1,5 @@
-const CACHE = "baby-feeds-v7";
-const FILES = ["./", "./index.html", "./manifest.webmanifest", "./install.js", "./icon-192.png", "./icon-512.png", "./icon-180.png"];
+const CACHE = "baby-feeds-v8";
+const FILES = ["./", "./index.html", "./manifest.webmanifest", "./install.js", "./supabase.js", "./icon-192.png", "./icon-512.png", "./icon-180.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {
@@ -8,9 +8,9 @@ self.addEventListener("fetch", e => {
 });
 self.addEventListener("push", e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (_) {}
-  e.waitUntil(self.registration.showNotification(d.title || "Next feed", { body: d.body || "It is time for the next feed.", icon: "icon-192.png", badge: "icon-192.png", tag: "next-feed", renotify: true, requireInteraction: !!d.alarm, vibrate: d.alarm ? [600, 250, 600, 250, 600, 250, 600, 250, 600] : [200] }));
+  e.waitUntil(self.registration.showNotification(d.title || "Next feed", { body: d.body || "It is time for the next feed.", icon: "icon-192.png", badge: "icon-192.png", tag: "next-feed", renotify: true, }));
 });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
-  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => cs.length ? (cs[0].postMessage("ring"), cs[0].focus()) : self.clients.openWindow("./?ring=1")));
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => cs.length ? cs[0].focus() : self.clients.openWindow("./")));
 });

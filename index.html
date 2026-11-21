@@ -42,17 +42,18 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.foot a{color:inherit}
 .switch{display:flex;gap:10px;align-items:center;margin:0;font-size:16px;color:var(--fg)}.switch input{width:20px;height:20px}
-.call{position:fixed;inset:0;z-index:20;background:linear-gradient(#e8a89f,#d98a85);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12vh 24px 12vh;text-align:center}
-.call h2{font-size:34px;margin:10px 0 4px;font-weight:600}.call p{margin:0;opacity:.9;font-size:18px}
-.call .av{width:110px;height:110px;border-radius:50%;background:#fbf3e8;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;font-size:54px}
-.call .acts{display:flex;gap:70px}.call .acts button{width:76px;height:76px;border-radius:50%;border:0;font-size:30px;color:#fff}
-.call .no{background:#c0504d}.call .yes{background:#4caf70;animation:ringpulse 1s infinite}
-@keyframes ringpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.dashhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:20px;overflow:hidden}.seg button{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:5px 12px}.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.tile b{display:block;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}.tile span{font-size:12px;color:var(--muted)}
+.gate{max-width:420px;margin:60px auto;padding:24px;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:16px}.gate p{color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--deep);color:#fff;padding:10px 16px;border-radius:10px;z-index:9}
 </style>
 </head>
 <body>
-<main>
+<div class="gate" id="gate" hidden></div>
+<main id="app">
   <header><h1>Baby Feeds</h1><button type="button" class="linkbtn" id="installBtn">Install app</button></header>
   <nav class="tabs"><button class="tab on" data-tab="live">Live</button><button class="tab" data-tab="add">Add</button><button class="tab" data-tab="hist">History</button></nav>
 
@@ -61,18 +62,6 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
     <div class="clock" id="clock" hidden>00:00</div>
     <div class="sub" id="startedAt" hidden></div>
     <button class="big" id="startBtn" type="button">Start feed</button>
-    <div class="card" id="remCard">
-      <label class="switch"><input type="checkbox" id="remOn"> Remind me about the next feed</label>
-      <div id="remOpts" hidden>
-        <div class="row" style="align-items:end"><div><label for="remT">Next feed at</label><input id="remT" type="time"></div>
-        <div style="flex:0 0 auto"><button class="btn ghost" id="rem3" type="button" style="margin:0;padding:10px 14px">In 3 h</button></div></div>
-        <label class="switch" style="margin-top:12px;font-size:15px"><input type="checkbox" id="remAlarm"> Alarm style: loud vibration, stays on screen until tapped</label>
-        <label class="switch" style="margin-top:8px;font-size:15px"><input type="checkbox" id="remRing"> Ring like a call when the app is open (keeps the screen on)</label>
-        <button class="linkbtn" id="remTest" type="button" style="margin-top:8px;padding-left:0">Send a test notification</button>
-        <div class="sub" id="remNext" style="text-align:left;margin-top:8px"></div>
-      </div>
-      <div class="sub" id="remMsg" style="text-align:left"></div>
-    </div>
     <div class="card" id="stopCard" hidden>
       <label>Breast</label>
       <div class="chips sides" id="liveSides"></div>
@@ -81,6 +70,21 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
       <div class="chips" data-for="liveMl"></div>
       <button class="big stop" id="stopBtn" type="button" style="font-size:20px;padding:20px 0">Stop &amp; save</button>
       <button class="btn ghost" id="cancelBtn" type="button">Cancel this feed</button>
+    </div>
+    <div class="card" id="dash">
+      <div class="dashhead"><b>Overview</b><span class="seg"><button type="button" data-m="day" class="on">Today</button><button type="button" data-m="24h">24 h</button></span></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="sub" id="typical" style="margin-top:10px"></div>
+    </div>
+    <div class="card" id="remCard">
+      <label class="switch"><input type="checkbox" id="remOn"> Remind me about the next feed</label>
+      <div id="remOpts" hidden>
+        <div class="row" style="align-items:end"><div><label for="remT">Next feed at</label><input id="remT" type="time"></div>
+        <div style="flex:0 0 auto"><button class="btn ghost" id="rem3" type="button" style="margin:0;padding:10px 14px">In 3 h</button></div></div>
+        <button class="linkbtn" id="remTest" type="button" style="margin-top:8px;padding-left:0">Send a test notification</button>
+        <div class="sub" id="remNext" style="text-align:left;margin-top:8px"></div>
+      </div>
+      <div class="sub" id="remMsg" style="text-align:left"></div>
     </div>
   </section>
 
@@ -108,20 +112,19 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
     <button class="btn ghost" id="exportBtn" type="button">Export CSV</button>
   </section>
 
-  <p class="foot">Version <span id="ver"></span> · <a href="https://github.com/lucaferioli95/lucaferioli95-baby-feeds/blob/main/CHANGELOG.md">Changelog</a> · <span id="hostNote"></span><br>Data is stored on this device only.</p>
+  <p class="foot">Version <span id="ver"></span> · <a href="https://github.com/lucaferioli95/lucaferioli95-baby-feeds/blob/main/CHANGELOG.md">Changelog</a> · <span id="hostNote"></span><br><span id="syncUi">Data is also kept on this device.</span></p>
 </main>
-<div class="call" id="call" hidden>
-  <div><div class="av">&#127868;</div><h2>Next feed</h2><p id="callSub">incoming&hellip;</p></div>
-  <div class="acts"><button class="no" id="callNo" type="button" aria-label="Dismiss">&#10005;</button><button class="yes" id="callYes" type="button" aria-label="Answer and start a feed">&#9990;</button></div>
-</div>
+<script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '1.5.0';
+var APP_VERSION = '2.0.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
 function save(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){ toast('Could not save on this device'); } }
-var feeds = load(KEY, []);       // {id, s, e (ms), ml}
+var store = load(KEY, []);       // {id, s, e (ms), ml, side, t (last change), del (removed)}
+store.forEach(function(f){ if (!f.t) f.t = f.s; });
+var feeds = store.filter(function(f){ return !f.del; });
 var live = load(LIVE, null);     // {s} while a feed is running
 var editing = null;
 var liveSide = '', formSide = '';
@@ -137,6 +140,13 @@ function dayLabel(key){
   var p = key.split('-'); return new Date(p[0], p[1]-1, p[2]).toLocaleDateString(undefined, {weekday:'short', day:'numeric', month:'short', year:'numeric'});
 }
 function toast(m){ var t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 1800); }
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+// Save locally, refresh the screen and (when signed in) sync with the other phone
+function commit(push){
+  save(KEY, store); feeds = store.filter(function(f){ return !f.del; });
+  renderLive(); remRender(); if (!$('hist').hidden) renderHist();
+  if (push !== false) syncSoon();
+}
 function toMs(date, time){ var d = date.split('-'), t = time.split(':'); return new Date(+d[0], +d[1]-1, +d[2], +t[0], +t[1]).getTime(); }
 
 /* tabs */
@@ -182,14 +192,45 @@ function renderLive(){
   if (run){ liveSide = live.side || ''; paintSides(); $('startedAt').textContent = 'Started ' + tstr(live.s); tick(); if (!timer) timer = setInterval(tick, 1000); }
   else { clearInterval(timer); timer = null; }
   var last = feeds.length ? feeds.reduce(function(a,b){ return b.s > a.s ? b : a; }) : null;
+  renderDash();
   $('lastFeed').textContent = last ? 'Last feed ' + dur(Date.now() - last.s) + ' ago (' + tstr(last.s) + ')' : 'No feeds yet';
 }
+var dmode = 'day'; try { dmode = localStorage.getItem('bf-dmode') || 'day'; } catch(e){}
+function mins(ms){ var m = Math.round(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + pad(m % 60) + 'm'; }
+function renderDash(){
+  document.querySelectorAll('#dash .seg button').forEach(function(b){ b.classList.toggle('on', b.dataset.m === dmode); });
+  var now = Date.now(), d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  var from = dmode === 'day' ? d0.getTime() : now - 864e5, len = now - from;
+  var inR = function(a, b){ return feeds.filter(function(f){ return f.s >= a && f.s < b; }).sort(function(x, y){ return x.s - y.s; }); };
+  var cur = inR(from, now + 1), prev = inR(from - len, from);
+  var tm = cur.reduce(function(a, f){ return a + (f.e - f.s); }, 0), ml = cur.reduce(function(a, f){ return a + (f.ml || 0); }, 0);
+  var gaps = []; for (var i = 1; i < cur.length; i++) gaps.push(cur[i].s - cur[i-1].s);
+  var avg = gaps.length ? gaps.reduce(function(a, g){ return a + g; }, 0) / gaps.length : 0, longest = gaps.length ? Math.max.apply(null, gaps) : 0;
+  var all = feeds.slice().sort(function(a, b){ return b.s - a.s; }), last = all[0];
+  var next = !last || !last.side ? '–' : last.side === 'L' ? 'Right' : last.side === 'R' ? 'Left' : '–';
+  var cnt = function(k){ return cur.filter(function(f){ return (f.side || '').indexOf(k) >= 0; }).length; };
+  var cmp = dmode === 'day' ? 'yesterday' : 'before';
+  var T = [
+    [cur.length, 'feeds · ' + cmp + ' ' + prev.length],
+    [cur.length ? mins(tm) : '–', 'at the breast'],
+    [ml ? ml + ' ml' : '–', 'top-up'],
+    [gaps.length ? mins(avg) : '–', 'average gap'],
+    [gaps.length ? mins(longest) : '–', 'longest gap'],
+    [next, 'start on next · L ' + cnt('L') + ' / R ' + cnt('R')]
+  ];
+  $('tiles').innerHTML = T.map(function(t){ return '<div class="tile"><b>' + t[0] + '</b><span>' + t[1] + '</span></div>'; }).join('');
+  // a typical day from the last 7 days that have feeds (today left out)
+  var by = {}; feeds.filter(function(f){ return f.s >= d0.getTime() - 7 * 864e5 && f.s < d0.getTime(); }).forEach(function(f){ var k = dstr(f.s); by[k] = by[k] || {n: 0, ml: 0}; by[k].n++; by[k].ml += f.ml || 0; });
+  var ks = Object.keys(by);
+  $('typical').textContent = ks.length ? 'Typical day (last ' + ks.length + ' with feeds): ' + Math.round(ks.reduce(function(a, k){ return a + by[k].n; }, 0) / ks.length * 10) / 10 + ' feeds, ' + Math.round(ks.reduce(function(a, k){ return a + by[k].ml; }, 0) / ks.length) + ' ml top-up' : '';
+}
+document.querySelectorAll('#dash .seg button').forEach(function(b){ b.onclick = function(){ dmode = b.dataset.m; try { localStorage.setItem('bf-dmode', dmode); } catch(e){} renderDash(); }; });
 function tick(){ var s = Math.max(0, Math.floor((Date.now() - live.s) / 1000)); $('clock').textContent = pad(Math.floor(s/60)) + ':' + pad(s % 60); if (s >= 3600) $('clock').textContent = Math.floor(s/3600) + ':' + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
 $('startBtn').onclick = function(){ live = {s: Date.now(), side: ''}; liveSide = ''; save(LIVE, live); $('liveMl').value = ''; renderLive(); rem.manual = null; remSave(); schedule(); };
 $('stopBtn').onclick = function(){
   var ml = parseInt($('liveMl').value, 10) || 0;
-  feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: live.s, e: Date.now(), ml: ml, side: liveSide});
-  save(KEY, feeds); live = null; localStorage.removeItem(LIVE); renderLive(); toast('Saved'); schedule();
+  store.push({id: newId(), s: live.s, e: Date.now(), ml: ml, side: liveSide, t: Date.now()});
+  live = null; localStorage.removeItem(LIVE); commit(); toast('Saved'); schedule();
 };
 $('cancelBtn').onclick = function(){ if (confirm('Discard this feed?')){ live = null; localStorage.removeItem(LIVE); renderLive(); schedule(); } };
 
@@ -206,14 +247,14 @@ $('saveBtn').onclick = function(){
   if (e < s) e += 864e5;                       // finished after midnight
   if (e - s > 6 * 3600e3){ toast('That is over 6 hours, check the times'); return; }
   var ml = parseInt($('fMl').value, 10) || 0;
-  if (editing){ var f = feeds.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; f.side = formSide; } }
-  else feeds.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), s: s, e: e, ml: ml, side: formSide});
-  save(KEY, feeds); editing = null; toast('Saved'); resetForm(); tab('hist'); schedule();
+  if (editing){ var f = store.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; f.side = formSide; f.t = Date.now(); } }
+  else store.push({id: newId(), s: s, e: e, ml: ml, side: formSide, t: Date.now()});
+  commit(); editing = null; toast('Saved'); resetForm(); tab('hist'); schedule();
 };
-$('delBtn').onclick = function(){ if (editing && confirm('Delete this feed?')){ feeds = feeds.filter(function(x){ return x.id !== editing; }); save(KEY, feeds); editing = null; tab('hist'); schedule(); } };
+$('delBtn').onclick = function(){ if (editing && confirm('Delete this feed?')){ var f = store.find(function(x){ return x.id === editing; }); if (f){ f.del = true; f.t = Date.now(); } commit(); editing = null; tab('hist'); schedule(); } };
 $('cancelEdit').onclick = function(){ editing = null; tab('hist'); };
 function edit(id){
-  var f = feeds.find(function(x){ return x.id === id; }); if (!f) return;
+  var f = store.find(function(x){ return x.id === id && !x.del; }); if (!f) return;
   editing = id; tab('add');
   $('formTitle').textContent = 'Edit feed'; $('fDate').value = dstr(f.s); $('fStart').value = tstr(f.s); $('fEnd').value = tstr(f.e); $('fMl').value = f.ml || ''; formSide = f.side || ''; paintSides();
   $('delBtn').hidden = false; $('cancelEdit').hidden = false;
@@ -239,7 +280,7 @@ $('exportBtn').onclick = function(){
 /* next-feed notification (web push, sent by a small server job so it arrives with the app closed) */
 var PUSH_URL = 'https://jsddqdmaatosqvbdrzjo.supabase.co/functions/v1/bf-push';
 var VAPID = 'BA_-09UuzUtJEbYBt3t64pXyFOqGa7AnXgXFkZ2o5dMZFPKVm5Y_2qiWj0QGv29y5LmaJFBVb1aN2BvZpLeVnTA';
-var rem = load('bf-rem-v1', {on: false, h: 3, sub: null, manual: null, alarm: false, ring: false, rung: 0});
+var rem = load('bf-rem-v1', {on: false, h: 3, sub: null, manual: null});
 rem.h = 3;
 function remSave(){ save('bf-rem-v1', rem); }
 function b64(s){ var p = '='.repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, function(c){ return c.charCodeAt(0); }); }
@@ -253,16 +294,16 @@ function nextDue(){
   return last ? last + rem.h * 3600e3 : 0;
 }
 function remRender(){
-  $('remOn').checked = rem.on; $('remRing').checked = !!rem.ring; $('remAlarm').checked = !!rem.alarm; $('remOpts').hidden = !rem.on;
+  $('remOn').checked = rem.on; $('remOpts').hidden = !rem.on;
   var d = nextDue(), live_ = d > Date.now();
   if (document.activeElement !== $('remT')) $('remT').value = live_ ? tstr(d) : '';
   $('remNext').textContent = rem.on && live_ ? 'Reminder ' + (dstr(d) === dstr(Date.now()) ? 'today' : 'tomorrow') + ' at ' + tstr(d) : (rem.on ? 'No reminder set. Pick a time or tap In 3 h.' : '');
 }
 function schedule(){
-  remRender(); if (typeof armRing === 'function') armRing();
+  remRender();
   if (!rem.on || !rem.sub) return;
   var d = nextDue();
-  if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'Time for the next feed.', alarm: !!rem.alarm}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
+  if (d > Date.now()) post({action: 'set', sub: rem.sub, dueAt: new Date(d).toISOString(), title: 'Next feed', body: 'Time for the next feed.'}).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service (offline?).'; });
   else post({action: 'cancel', endpoint: rem.sub.endpoint}).catch(function(){});
 }
 function enableRem(){
@@ -286,52 +327,67 @@ $('remT').onchange = function(){
   if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
   rem.manual = d.getTime(); remSave(); this.blur(); schedule();
 };
-$('remAlarm').onchange = function(){ rem.alarm = this.checked; remSave(); schedule(); };
 $('rem3').onclick = function(){ rem.manual = Date.now() + 3 * 3600e3; remSave(); schedule(); };
-$('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent = 'Sending…'; post({action: 'test', sub: rem.sub, alarm: !!rem.alarm}).then(function(r){ $('remMsg').textContent = r.ok ? 'Sent, it should appear in a few seconds.' : 'Failed (' + (r.error || 'unknown') + ').'; }).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service.'; }); };
+$('remTest').onclick = function(){ if (!rem.sub) return; $('remMsg').textContent = 'Sending…'; post({action: 'test', sub: rem.sub}).then(function(r){ $('remMsg').textContent = r.ok ? 'Sent, it should appear in a few seconds.' : 'Failed (' + (r.error || 'unknown') + ').'; }).catch(function(){ $('remMsg').textContent = 'Could not reach the reminder service.'; }); };
 
-/* fake call: a ringing screen with a looping ring tone. Only works while the app is open and on screen (a web page cannot ring in the background). */
-var ac = null, ringT = null, ringStop = null, wake = null;
-function audio(){ try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch(e){} return ac; }
-['pointerdown','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, function(){ if (rem.ring) audio(); }, {passive: true}); });
-function burst(t){ var c = ac; [440, 480].forEach(function(f){ var o = c.createOscillator(), g = c.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.25, t + 0.03); g.gain.setValueAtTime(0.25, t + 0.9); g.gain.linearRampToValueAtTime(0, t + 1); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 1.05); }); }
-function ringNow(){
-  if (!$('call').hidden) return;
-  rem.rung = Date.now(); remSave();
-  $('call').hidden = false; $('callSub').textContent = 'incoming…';
-  var c = audio();
-  function pulse(){ if (c && c.state === 'running'){ burst(c.currentTime); burst(c.currentTime + 1.2); } try { navigator.vibrate && navigator.vibrate([800, 400, 800]); } catch(e){} }
-  pulse(); ringT = setInterval(pulse, 3500);
-  ringStop = setTimeout(endRing, 60000);
+/* shared history: Google sign-in (same allow-list as the Family Planner) + merge by id, newest change wins */
+var SB_URL = 'https://jsddqdmaatosqvbdrzjo.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzZGRxZG1hYXRvc3F2YmRyempvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0OTkwMTEsImV4cCI6MjEwMzA3NTAxMX0.sHI2j5w3xjRJhkD9EUqU2l1ZxgW164DqyIdEyGGgAXs';
+var sb = null, sess = null, syncing = false, syncTmr = null, again = false, lastSync = 0, syncErr = false;
+function esc(t){ return String(t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function gate(html){ $('gate').hidden = !html; $('gate').innerHTML = html || ''; $('app').hidden = !!html; }
+function paintSync(){
+  var el = $('syncUi'); if (!sess){ el.textContent = 'Data is also kept on this device.'; return; }
+  el.innerHTML = esc((sess.user.email || '').split('@')[0]) + ' · ' + (syncErr ? 'offline, will sync later' : lastSync ? 'synced ' + tstr(lastSync) : 'syncing…') + ' · <a href="#" id="signOutLink">Sign out</a>';
+  $('signOutLink').onclick = function(e){ e.preventDefault(); sb.auth.signOut().then(function(){ location.reload(); }); };
 }
-function endRing(){ clearInterval(ringT); clearTimeout(ringStop); ringT = ringStop = null; $('call').hidden = true; try { navigator.vibrate && navigator.vibrate(0); } catch(e){} }
-$('callNo').onclick = endRing;
-$('callYes').onclick = function(){ endRing(); if (!live) $('startBtn').click(); tab('live'); };
-var ringTimer = null;
-function armRing(){
-  clearTimeout(ringTimer); ringTimer = null;
-  if (!rem.ring || !rem.on) return;
-  var d = nextDue(), ms = d - Date.now();
-  if (d && ms > 0 && ms < 2147e6) ringTimer = setTimeout(function(){ if (rem.on && rem.ring) ringNow(); }, ms);
-}
-function wantWake(){
+function toRow(f){ return {id: f.id, s: f.s, e: f.e, ml: f.ml || 0, side: f.side || '', t: f.t || f.s, deleted: !!f.del}; }
+function syncSoon(){ if (!sb || !sess) return; clearTimeout(syncTmr); syncTmr = setTimeout(sync, 400); }
+async function sync(){
+  if (!sb || !sess) return;
+  if (syncing){ again = true; return; }
+  syncing = true;
   try {
-    if (!navigator.wakeLock) return;
-    if (rem.ring && rem.on && document.visibilityState === 'visible'){ if (!wake) navigator.wakeLock.request('screen').then(function(l){ wake = l; l.addEventListener('release', function(){ wake = null; }); }).catch(function(){}); }
-    else if (wake){ wake.release(); wake = null; }
-  } catch(e){}
+    var r = await sb.from('bf_feeds').select('*').range(0, 9999);
+    if (r.error) throw r.error;
+    var remote = {}, local = {}, changed = false, up = [];
+    r.data.forEach(function(x){ remote[x.id] = x; });
+    store.forEach(function(f){ local[f.id] = f; });
+    r.data.forEach(function(x){
+      var f = local[x.id];
+      if (!f){ store.push({id: x.id, s: Number(x.s), e: Number(x.e), ml: x.ml, side: x.side, t: Number(x.t), del: x.deleted}); changed = true; }
+      else if (Number(x.t) > (f.t || 0)){ f.s = Number(x.s); f.e = Number(x.e); f.ml = x.ml; f.side = x.side; f.t = Number(x.t); f.del = x.deleted; changed = true; }
+    });
+    store.forEach(function(f){ var x = remote[f.id]; if (!x || (f.t || 0) > Number(x.t)) up.push(toRow(f)); });
+    if (up.length){ var u = await sb.from('bf_feeds').upsert(up); if (u.error) throw u.error; }
+    if (changed) commit(false);
+    lastSync = Date.now(); syncErr = false;
+  } catch(e){ syncErr = true; }
+  syncing = false; paintSync();
+  if (again){ again = false; syncSoon(); }
 }
-document.addEventListener('visibilitychange', function(){ wantWake(); armRing(); checkMissed(); });
-// opened from the notification or after the screen was off: ring if the reminder came due in the last 10 minutes and has not rung yet
-function checkMissed(){
-  var d = nextDue(), now = Date.now();
-  if (rem.ring && rem.on && d && d <= now && now - d < 600e3 && rem.rung < d) ringNow();
+async function boot(){
+  renderLive(); resetForm(); remRender();
+  if (!(window.supabase && window.supabase.createClient)){ gate('<h2>Could not load</h2><p>The sync library did not load. Check your connection and reload.</p>'); return; }
+  sb = window.supabase.createClient(SB_URL, SB_KEY, {auth: {persistSession: true, detectSessionInUrl: true, flowType: 'pkce'}});
+  try { sess = (await sb.auth.getSession()).data.session; } catch(e){}
+  if (!sess){
+    gate('<h2>Baby Feeds</h2><p>Sign in with Google to see the shared feeds.</p><button class="btn" id="signInBtn" type="button">Sign in with Google</button>');
+    $('signInBtn').onclick = function(){ sb.auth.signInWithOAuth({provider: 'google', options: {redirectTo: location.origin + location.pathname}}); };
+    return;
+  }
+  var email = (sess.user.email || '').toLowerCase(), ok = await sb.rpc('is_planner_member'), cached = localStorage.getItem('bf-member') === email;
+  if (ok.error && cached){ /* offline: carry on with the saved copy */ }
+  else if (ok.error || ok.data !== true){
+    gate('<h2>Not on the list</h2><p>The Google account ' + esc(email) + ' is not allowed here. Sign in with the account you use for the Family Planner.</p><button class="btn" id="outBtn" type="button">Sign out</button>');
+    $('outBtn').onclick = function(){ sb.auth.signOut().then(function(){ location.reload(); }); }; return;
+  } else { try { localStorage.setItem('bf-member', email); } catch(e){} }
+  gate(''); paintSync(); sync();
+  setInterval(sync, 30000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) sync(); });
+  window.addEventListener('online', sync);
 }
-$('remRing').onchange = function(){ rem.ring = this.checked; remSave(); if (rem.ring) audio(); armRing(); wantWake(); };
-navigator.serviceWorker && navigator.serviceWorker.addEventListener && navigator.serviceWorker.addEventListener('message', function(e){ if (e.data === 'ring') checkMissed(); });
-if (/[?&]ring=1/.test(location.search)) setTimeout(checkMissed, 300);
-
-renderLive(); resetForm(); remRender(); armRing(); wantWake();
+boot();
 setInterval(function(){ if (!$('live').hidden && !live) renderLive(); }, 60000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 </script>

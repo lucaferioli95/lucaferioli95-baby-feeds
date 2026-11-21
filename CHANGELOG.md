@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0 - 2026-11-21
+- Shared history: sign in with Google (same allow-list as the Family Planner, so only you and Alice) and both phones see the same feeds. It still works offline and syncs when back online. Edits and deletes sync too. Feeds already on a phone are added to the shared history the first time it signs in.
+- Reminders follow the shared history: a feed logged on either phone moves the reminder on both phones.
+- Live tab: Start feed stays big in the middle, with a new Overview underneath: feeds, time at the breast, top-up, average and longest gap, which side to start on next, and a typical day. Switch between Today and the last 24 h.
+- Removed the alarm style and the fake call; normal notifications only.
+
 ## 1.5.0 - 2026-11-20
 - Ring like a call (optional switch under the reminder): when the reminder comes due and the app is open on screen, a full-screen incoming-call page appears with a looping ring tone and vibration. Answer starts a feed, the red button dismisses it. It also rings when you open the app from the notification within 10 minutes of the due time. The screen is kept on while the app is open and the switch is on.
 - Limit: a web page cannot ring in the background or with the screen off; the notification covers that case.
