@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.0 - 2026-11-22
+- Add: a feed can now be saved with start, end, breast or top-up left empty. In History it gets a red ! (also on the day row), and missing times show as –:–. Tap it to fill the gaps later. A feed with no breast chosen also gets the !.
+- Feeds without a start time are left out of the last-feed time, the gaps and the reminder; feeds without both times are left out of the time at the breast.
+
 ## 2.2.0 - 2026-11-22
 - Nappies: two big counters on the Live tab, 💧 pee and 💩 poop, for today. Tap to add one, tap − to take the last one off. They sync between phones (each tap is its own record, so two phones tapping together never lose a count). History shows 💧 and 💩 for every day. No times are kept.
 - Fewer words, more icons: tabs, Start / Stop, the overview tiles, history day summaries, the reminder and the add form now use icons and short labels. Breast side is just L / R.

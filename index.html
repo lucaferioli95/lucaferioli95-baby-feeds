@@ -50,6 +50,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .dadd .dic{font-size:30px}.dadd b{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums}
 .dadd:active{background:var(--bg)}
 .dminus{width:44px;border:0;border-right:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-size:22px}
+.bang{color:#fff;background:#d33;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;font-size:12px;margin-right:6px;vertical-align:middle}
 .dashhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:20px;overflow:hidden}.seg button{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:5px 12px}.seg button.on{background:var(--accent);color:var(--accent-fg)}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -127,7 +128,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.2.0';
+var APP_VERSION = '2.3.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -165,6 +166,11 @@ document.querySelectorAll('.dminus').forEach(function(b){ b.onclick = function()
   var d = dstr(Date.now()), l = dstore.filter(function(x){ return x.day === d && x.k === b.dataset.k && !x.del; }).sort(function(a, c){ return c.t - a.t; })[0];
   if (l){ l.del = true; l.t = Date.now(); dCommit(); }
 }; });
+// A feed can be saved with gaps. miss holds 's' (no start) and/or 'e' (no end); no breast also counts as incomplete.
+function noS(f){ return (f.miss || '').indexOf('s') >= 0; }
+function noE(f){ return (f.miss || '').indexOf('e') >= 0; }
+function incomplete(f){ return noS(f) || noE(f) || !f.side; }
+function whole(f){ return !noS(f) && !noE(f); }
 function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 // Save locally, refresh the screen and (when signed in) sync with the other phone
 function commit(push){
@@ -216,7 +222,7 @@ function renderLive(){
   $('startBtn').hidden = run; $('stopCard').hidden = !run; $('clock').hidden = !run; $('startedAt').hidden = !run;
   if (run){ liveSide = live.side || ''; paintSides(); $('startedAt').textContent = 'Started ' + tstr(live.s); tick(); if (!timer) timer = setInterval(tick, 1000); }
   else { clearInterval(timer); timer = null; }
-  var last = feeds.length ? feeds.reduce(function(a,b){ return b.s > a.s ? b : a; }) : null;
+  var timedFeeds = feeds.filter(function(f){ return !noS(f); }), last = timedFeeds.length ? timedFeeds.reduce(function(a,b){ return b.s > a.s ? b : a; }) : null;
   renderDash(); renderDia();
   $('lastFeed').textContent = last ? '🍼 ' + dur(Date.now() - last.s) + ' ago · ' + tstr(last.s) : '🍼 –';
 }
@@ -228,10 +234,10 @@ function renderDash(){
   var from = dmode === 'day' ? d0.getTime() : now - 864e5, len = now - from;
   var inR = function(a, b){ return feeds.filter(function(f){ return f.s >= a && f.s < b; }).sort(function(x, y){ return x.s - y.s; }); };
   var cur = inR(from, now + 1), prev = inR(from - len, from);
-  var tm = cur.reduce(function(a, f){ return a + (f.e - f.s); }, 0), ml = cur.reduce(function(a, f){ return a + (f.ml || 0); }, 0);
-  var gaps = []; for (var i = 1; i < cur.length; i++) gaps.push(cur[i].s - cur[i-1].s);
+  var tm = cur.reduce(function(a, f){ return a + (whole(f) ? f.e - f.s : 0); }, 0), ml = cur.reduce(function(a, f){ return a + (f.ml || 0); }, 0);
+  var gaps = [], timed = cur.filter(function(f){ return !noS(f); }); for (var i = 1; i < timed.length; i++) gaps.push(timed[i].s - timed[i-1].s);
   var avg = gaps.length ? gaps.reduce(function(a, g){ return a + g; }, 0) / gaps.length : 0, longest = gaps.length ? Math.max.apply(null, gaps) : 0;
-  var all = feeds.slice().sort(function(a, b){ return b.s - a.s; }), last = all[0];
+  var all = feeds.filter(function(f){ return !noS(f); }).sort(function(a, b){ return b.s - a.s; }), last = all[0];
   var next = !last || !last.side ? '–' : last.side === 'L' ? 'R' : last.side === 'R' ? 'L' : '–';
   var cnt = function(k){ return cur.filter(function(f){ return (f.side || '').indexOf(k) >= 0; }).length; };
   var cmp = dmode === 'day' ? 'yesterday' : 'before';
@@ -267,13 +273,15 @@ function resetForm(){
 }
 $('saveBtn').onclick = function(){
   var date = $('fDate').value, st = $('fStart').value, en = $('fEnd').value;
-  if (!date || !st || !en){ toast('Fill date, start and end'); return; }
-  var s = toMs(date, st), e = toMs(date, en);
-  if (e < s) e += 864e5;                       // finished after midnight
-  if (e - s > 6 * 3600e3){ toast('That is over 6 hours, check the times'); return; }
+  if (!date){ date = dstr(Date.now()); $('fDate').value = date; }
+  var miss = (st ? '' : 's') + (en ? '' : 'e');
+  // a missing time is stored as midnight (start) or the start (end) so the feed still sorts under its day
+  var s = toMs(date, st || '00:00'), e = en ? toMs(date, en) : s;
+  if (st && en && e < s) e += 864e5;           // finished after midnight
+  if (st && en && e - s > 6 * 3600e3){ toast('> 6 h ?'); return; }
   var ml = mlv($('fMl').value);
-  if (editing){ var f = store.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; f.side = formSide; f.t = Date.now(); } }
-  else store.push({id: newId(), s: s, e: e, ml: ml, side: formSide, t: Date.now()});
+  if (editing){ var f = store.find(function(x){ return x.id === editing; }); if (f){ f.s = s; f.e = e; f.ml = ml; f.side = formSide; f.miss = miss; f.t = Date.now(); } }
+  else store.push({id: newId(), s: s, e: e, ml: ml, side: formSide, miss: miss, t: Date.now()});
   commit(); editing = null; toast('Saved'); resetForm(); tab('hist'); schedule();
 };
 $('delBtn').onclick = function(){ if (editing && confirm('Delete this feed?')){ var f = store.find(function(x){ return x.id === editing; }); if (f){ f.del = true; f.t = Date.now(); } commit(); editing = null; tab('hist'); schedule(); } };
@@ -281,7 +289,7 @@ $('cancelEdit').onclick = function(){ editing = null; tab('hist'); };
 function edit(id){
   var f = store.find(function(x){ return x.id === id && !x.del; }); if (!f) return;
   editing = id; tab('add');
-  $('formTitle').textContent = '🍼 ✎'; $('fDate').value = dstr(f.s); $('fStart').value = tstr(f.s); $('fEnd').value = tstr(f.e); $('fMl').value = f.ml || ''; formSide = f.side || ''; paintSides();
+  $('formTitle').textContent = '🍼 ✎'; $('fDate').value = dstr(f.s); $('fStart').value = noS(f) ? '' : tstr(f.s); $('fEnd').value = noE(f) ? '' : tstr(f.e); $('fMl').value = f.ml || ''; formSide = f.side || ''; paintSides();
   $('delBtn').hidden = false; $('cancelEdit').hidden = false;
 }
 
@@ -293,16 +301,16 @@ function renderHist(){
   dstore.forEach(function(x){ if (!x.del && !days[x.day]) days[x.day] = []; });
   if (!Object.keys(days).length){ $('histList').innerHTML = '<div class="empty">🍼 –</div>'; return; }
   $('histList').innerHTML = Object.keys(days).sort().reverse().map(function(k){
-    var L = days[k], mins = L.reduce(function(a,f){ return a + (f.e - f.s) / 60000; }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
+    var L = days[k], mins = L.reduce(function(a,f){ return a + (whole(f) ? (f.e - f.s) / 60000 : 0); }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
     var isOpen = k in openDays ? openDays[k] : k === dstr(Date.now());
-    return '<details class="dayd" data-k="' + k + '"' + (isOpen ? ' open' : '') + '><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>🍼' + L.length + ' · ' + Math.round(mins) + '′' + (ml ? ' · 🥛' + fm(ml) : '') + ' · 💧' + dcount(k, 'pee') + ' 💩' + dcount(k, 'poop') + '</span></summary>' +
-      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('') + '</details>';
+    return '<details class="dayd" data-k="' + k + '"' + (isOpen ? ' open' : '') + '><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + (L.some(incomplete) ? '<b class="bang">!</b> ' : '') + '🍼' + L.length + ' · ' + Math.round(mins) + '′' + (ml ? ' · 🥛' + fm(ml) : '') + ' · 💧' + dcount(k, 'pee') + ' 💩' + dcount(k, 'poop') + '</span></summary>' +
+      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span>' + (incomplete(f) ? '<b class="bang" title="Something is missing">!</b>' : '') + '<b>' + (noS(f) ? '–:–' : tstr(f.s)) + '–' + (noE(f) ? '–:–' : tstr(f.e)) + '</b> <small>' + (whole(f) ? dur(f.e - f.s) : '') + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('') + '</details>';
   }).join('');
 }
 $('histList').addEventListener('toggle', function(e){ var d = e.target; if (d.dataset && d.dataset.k) openDays[d.dataset.k] = d.open; }, true);
 $('histList').onclick = function(e){ var b = e.target.closest('.item'); if (b) edit(b.dataset.id); };
 $('exportBtn').onclick = function(){
-  var rows = ['Date,Start,End,Minutes,Breast,TopUp_ml'].concat(feeds.slice().sort(function(a,b){ return a.s - b.s; }).map(function(f){ return [dstr(f.s), tstr(f.s), tstr(f.e), Math.round((f.e - f.s)/60000), sideTxt(f.side || ''), f.ml || 0].join(','); }));
+  var rows = ['Date,Start,End,Minutes,Breast,TopUp_ml'].concat(feeds.slice().sort(function(a,b){ return a.s - b.s; }).map(function(f){ return [dstr(f.s), noS(f) ? '' : tstr(f.s), noE(f) ? '' : tstr(f.e), whole(f) ? Math.round((f.e - f.s)/60000) : '', sideTxt(f.side || ''), f.ml || 0].join(','); }));
   var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type: 'text/csv'})); a.download = 'baby-feeds-' + dstr(Date.now()) + '.csv'; a.click();
 };
 
@@ -318,7 +326,7 @@ function pushOk(){ return 'serviceWorker' in navigator && 'PushManager' in windo
 // A time picked by hand wins until it has passed or a new feed starts; otherwise 3 h after the latest feed began.
 function nextDue(){
   if (rem.manual && rem.manual > Date.now()) return rem.manual;
-  var last = feeds.reduce(function(a, f){ return Math.max(a, f.s); }, 0);
+  var last = feeds.reduce(function(a, f){ return noS(f) ? a : Math.max(a, f.s); }, 0);
   if (live) last = Math.max(last, live.s);
   return last ? last + rem.h * 3600e3 : 0;
 }
@@ -371,7 +379,7 @@ function paintSync(){
   if ($('syncNow')) $('syncNow').onclick = function(e){ e.preventDefault(); sync(); };
   $('signOutLink').onclick = function(e){ e.preventDefault(); sb.auth.signOut().then(function(){ location.reload(); }); };
 }
-function toRow(f){ return {id: f.id, s: f.s, e: f.e, ml: f.ml || 0, side: f.side || '', t: f.t || f.s, deleted: !!f.del}; }
+function toRow(f){ return {id: f.id, s: f.s, e: f.e, ml: f.ml || 0, side: f.side || '', miss: f.miss || '', t: f.t || f.s, deleted: !!f.del}; }
 function syncSoon(){ if (!sb || !sess) return; clearTimeout(syncTmr); syncTmr = setTimeout(sync, 400); }
 async function sync(){
   if (!sb || !sess) return;
@@ -385,8 +393,8 @@ async function sync(){
     store.forEach(function(f){ local[f.id] = f; });
     r.data.forEach(function(x){
       var f = local[x.id];
-      if (!f){ store.push({id: x.id, s: Number(x.s), e: Number(x.e), ml: Number(x.ml) || 0, side: x.side, t: Number(x.t), del: x.deleted}); changed = true; }
-      else if (Number(x.t) > (f.t || 0)){ f.s = Number(x.s); f.e = Number(x.e); f.ml = Number(x.ml) || 0; f.side = x.side; f.t = Number(x.t); f.del = x.deleted; changed = true; }
+      if (!f){ store.push({id: x.id, s: Number(x.s), e: Number(x.e), ml: Number(x.ml) || 0, side: x.side, miss: x.miss || '', t: Number(x.t), del: x.deleted}); changed = true; }
+      else if (Number(x.t) > (f.t || 0)){ f.s = Number(x.s); f.e = Number(x.e); f.ml = Number(x.ml) || 0; f.side = x.side; f.miss = x.miss || ''; f.t = Number(x.t); f.del = x.deleted; changed = true; }
     });
     store.forEach(function(f){ var x = remote[f.id]; if (!x || (f.t || 0) > Number(x.t)) up.push(toRow(f)); });
     if (up.length){ var u = await sb.from('bf_feeds').upsert(up); if (u.error) throw u.error; }
