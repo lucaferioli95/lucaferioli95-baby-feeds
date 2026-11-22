@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0 - 2026-11-22
+- Nappies: two big counters on the Live tab, 💧 pee and 💩 poop, for today. Tap to add one, tap − to take the last one off. They sync between phones (each tap is its own record, so two phones tapping together never lose a count). History shows 💧 and 💩 for every day. No times are kept.
+- Fewer words, more icons: tabs, Start / Stop, the overview tiles, history day summaries, the reminder and the add form now use icons and short labels. Breast side is just L / R.
+
 ## 2.1.1 - 2026-11-21
 - Fix: new feeds were not reaching the shared history. A database rule rejected every save of a new feed, so each phone kept its own copy. The rule is fixed on the server; feeds already on a phone upload the next time the app is open.
 - The footer now says "sync problem" with the reason (instead of always saying offline) and has a Sync now / Retry link.

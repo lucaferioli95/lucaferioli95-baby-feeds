@@ -44,6 +44,12 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}.foot a{color:inherit}
 .switch{display:flex;gap:10px;align-items:center;margin:0;font-size:16px;color:var(--fg)}.switch input{width:20px;height:20px}
+.dia{display:flex;gap:10px;margin:10px 0}
+.dbox{flex:1;display:flex;border:1px solid var(--line);background:var(--surface);border-radius:16px;overflow:hidden}
+.dadd{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;border:0;background:none;color:var(--fg);font:inherit;padding:16px 0}
+.dadd .dic{font-size:30px}.dadd b{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums}
+.dadd:active{background:var(--bg)}
+.dminus{width:44px;border:0;border-right:1px solid var(--line);background:none;color:var(--muted);font:inherit;font-size:22px}
 .dashhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:20px;overflow:hidden}.seg button{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;padding:5px 12px}.seg button.on{background:var(--accent);color:var(--accent-fg)}
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -57,33 +63,36 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <div class="gate" id="gate" hidden></div>
 <main id="app">
   <header><h1>Baby Feeds</h1><button type="button" class="linkbtn" id="installBtn">Install app</button></header>
-  <nav class="tabs"><button class="tab on" data-tab="live">Live</button><button class="tab" data-tab="add">Add</button><button class="tab" data-tab="hist">History</button></nav>
+  <nav class="tabs"><button class="tab on" data-tab="live" aria-label="Live">🍼</button><button class="tab" data-tab="add" aria-label="Add">＋</button><button class="tab" data-tab="hist" aria-label="History">📅</button></nav>
 
   <section id="live">
     <div class="sub" id="lastFeed"></div>
     <div class="clock" id="clock" hidden>00:00</div>
     <div class="sub" id="startedAt" hidden></div>
-    <button class="big" id="startBtn" type="button">Start feed</button>
+    <button class="big" id="startBtn" type="button">▶ Start</button>
     <div class="card" id="stopCard" hidden>
-      <label>Breast</label>
       <div class="chips sides" id="liveSides"></div>
-      <label for="liveMl">Top-up (ml)</label>
+      <label for="liveMl">🥛 ml</label>
       <input id="liveMl" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0">
       <div class="chips" data-for="liveMl"></div>
-      <button class="big stop" id="stopBtn" type="button" style="font-size:20px;padding:20px 0">Stop &amp; save</button>
-      <button class="btn ghost" id="cancelBtn" type="button">Cancel this feed</button>
+      <button class="big stop" id="stopBtn" type="button" style="font-size:20px;padding:20px 0">■ Stop</button>
+      <button class="btn ghost" id="cancelBtn" type="button">✕</button>
+    </div>
+    <div class="dia" id="dia">
+      <div class="dbox"><button type="button" class="dminus" data-k="pee" aria-label="Remove one pee">−</button><button type="button" class="dadd" data-k="pee" aria-label="Add pee"><span class="dic">💧</span><b id="cPee">0</b></button></div>
+      <div class="dbox"><button type="button" class="dminus" data-k="poop" aria-label="Remove one poop">−</button><button type="button" class="dadd" data-k="poop" aria-label="Add poop"><span class="dic">💩</span><b id="cPoop">0</b></button></div>
     </div>
     <div class="card" id="dash">
-      <div class="dashhead"><b>Overview</b><span class="seg"><button type="button" data-m="day" class="on">Today</button><button type="button" data-m="24h">24 h</button></span></div>
+      <div class="dashhead"><b>📊</b><span class="seg"><button type="button" data-m="day" class="on">Today</button><button type="button" data-m="24h">24 h</button></span></div>
       <div class="tiles" id="tiles"></div>
       <div class="sub" id="typical" style="margin-top:10px"></div>
     </div>
     <div class="card" id="remCard">
-      <label class="switch"><input type="checkbox" id="remOn"> Remind me about the next feed</label>
+      <label class="switch"><input type="checkbox" id="remOn"> 🔔 Next feed</label>
       <div id="remOpts" hidden>
-        <div class="row" style="align-items:end"><div><label for="remT">Next feed at</label><input id="remT" type="time"></div>
-        <div style="flex:0 0 auto"><button class="btn ghost" id="rem3" type="button" style="margin:0;padding:10px 14px">In 3 h</button></div></div>
-        <button class="linkbtn" id="remTest" type="button" style="margin-top:8px;padding-left:0">Send a test notification</button>
+        <div class="row" style="align-items:end"><div><label for="remT">🔔 at</label><input id="remT" type="time"></div>
+        <div style="flex:0 0 auto"><button class="btn ghost" id="rem3" type="button" style="margin:0;padding:10px 14px">+3 h</button></div></div>
+        <button class="linkbtn" id="remTest" type="button" style="margin-top:8px;padding-left:0">Test 🔔</button>
         <div class="sub" id="remNext" style="text-align:left;margin-top:8px"></div>
       </div>
       <div class="sub" id="remMsg" style="text-align:left"></div>
@@ -92,26 +101,25 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 
   <section id="add" hidden>
     <div class="card">
-      <h2 id="formTitle" style="margin:0;font-size:16px">Add a feed</h2>
+      <h2 id="formTitle" style="margin:0;font-size:16px">🍼 ＋</h2>
       <label for="fDate">Date</label><input id="fDate" type="date">
       <div class="row">
         <div><label for="fStart">Start</label><input id="fStart" type="time"></div>
         <div><label for="fEnd">End</label><input id="fEnd" type="time"></div>
       </div>
-      <label>Breast</label>
       <div class="chips sides" id="fSides"></div>
-      <label for="fMl">Top-up (ml)</label>
+      <label for="fMl">🥛 ml</label>
       <input id="fMl" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0">
       <div class="chips" data-for="fMl"></div>
-      <button class="btn" id="saveBtn" type="button">Save</button>
-      <button class="btn del" id="delBtn" type="button" hidden>Delete this feed</button>
-      <button class="btn ghost" id="cancelEdit" type="button" hidden>Cancel</button>
+      <button class="btn" id="saveBtn" type="button">✓</button>
+      <button class="btn del" id="delBtn" type="button" hidden>🗑</button>
+      <button class="btn ghost" id="cancelEdit" type="button" hidden>✕</button>
     </div>
   </section>
 
   <section id="hist" hidden>
     <div id="histList"></div>
-    <button class="btn ghost" id="exportBtn" type="button">Export CSV</button>
+    <button class="btn ghost" id="exportBtn" type="button">⬇ CSV</button>
   </section>
 
   <p class="foot">Version <span id="ver"></span> · <a href="https://github.com/lucaferioli95/lucaferioli95-baby-feeds/blob/main/CHANGELOG.md">Changelog</a> · <span id="hostNote"></span><br><span id="syncUi">Data is also kept on this device.</span></p>
@@ -119,7 +127,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.1.1';
+var APP_VERSION = '2.2.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -144,6 +152,19 @@ function dayLabel(key){
 function toast(m){ var t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 1800); }
 function mlv(v){ var n = parseFloat(String(v).replace(',', '.')); return isFinite(n) && n > 0 ? Math.round(n * 10) / 10 : 0; }
 function fm(n){ return String(Math.round(n * 10) / 10); }
+// Nappies: one small record per tap, so two phones tapping at once never lose a count
+var dstore = load('bf-dia-v1', []);   // {id, day, k: 'pee' | 'poop', t, del}
+function dcount(day, k){ return dstore.filter(function(x){ return x.day === day && x.k === k && !x.del; }).length; }
+function renderDia(){ var d = dstr(Date.now()); $('cPee').textContent = dcount(d, 'pee'); $('cPoop').textContent = dcount(d, 'poop'); }
+function dCommit(push){ save('bf-dia-v1', dstore); renderDia(); if (!$('hist').hidden) renderHist(); if (push !== false) syncSoon(); }
+document.querySelectorAll('.dadd').forEach(function(b){ b.onclick = function(){
+  dstore.push({id: newId(), day: dstr(Date.now()), k: b.dataset.k, t: Date.now()}); dCommit();
+  try { navigator.vibrate && navigator.vibrate(15); } catch(e){}
+}; });
+document.querySelectorAll('.dminus').forEach(function(b){ b.onclick = function(){
+  var d = dstr(Date.now()), l = dstore.filter(function(x){ return x.day === d && x.k === b.dataset.k && !x.del; }).sort(function(a, c){ return c.t - a.t; })[0];
+  if (l){ l.del = true; l.t = Date.now(); dCommit(); }
+}; });
 function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 // Save locally, refresh the screen and (when signed in) sync with the other phone
 function commit(push){
@@ -165,7 +186,7 @@ document.querySelectorAll('.tab').forEach(function(b){ b.onclick = function(){ i
 /* breast side: tap Left, Right or both */
 function sideChips(box, get, set){
   box.innerHTML = '';
-  [['L','Left'],['R','Right']].forEach(function(x){
+  [['L','L'],['R','R']].forEach(function(x){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = x[1]; b.dataset.k = x[0];
     b.onclick = function(){ var v = get(); v = v.indexOf(x[0]) >= 0 ? v.replace(x[0], '') : (v + x[0]).split('').sort().reverse().join(''); set(v); paintSides(); };
     box.appendChild(b);
@@ -196,8 +217,8 @@ function renderLive(){
   if (run){ liveSide = live.side || ''; paintSides(); $('startedAt').textContent = 'Started ' + tstr(live.s); tick(); if (!timer) timer = setInterval(tick, 1000); }
   else { clearInterval(timer); timer = null; }
   var last = feeds.length ? feeds.reduce(function(a,b){ return b.s > a.s ? b : a; }) : null;
-  renderDash();
-  $('lastFeed').textContent = last ? 'Last feed ' + dur(Date.now() - last.s) + ' ago (' + tstr(last.s) + ')' : 'No feeds yet';
+  renderDash(); renderDia();
+  $('lastFeed').textContent = last ? '🍼 ' + dur(Date.now() - last.s) + ' ago · ' + tstr(last.s) : '🍼 –';
 }
 var dmode = 'day'; try { dmode = localStorage.getItem('bf-dmode') || 'day'; } catch(e){}
 function mins(ms){ var m = Math.round(ms / 60000); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + pad(m % 60) + 'm'; }
@@ -211,22 +232,22 @@ function renderDash(){
   var gaps = []; for (var i = 1; i < cur.length; i++) gaps.push(cur[i].s - cur[i-1].s);
   var avg = gaps.length ? gaps.reduce(function(a, g){ return a + g; }, 0) / gaps.length : 0, longest = gaps.length ? Math.max.apply(null, gaps) : 0;
   var all = feeds.slice().sort(function(a, b){ return b.s - a.s; }), last = all[0];
-  var next = !last || !last.side ? '–' : last.side === 'L' ? 'Right' : last.side === 'R' ? 'Left' : '–';
+  var next = !last || !last.side ? '–' : last.side === 'L' ? 'R' : last.side === 'R' ? 'L' : '–';
   var cnt = function(k){ return cur.filter(function(f){ return (f.side || '').indexOf(k) >= 0; }).length; };
   var cmp = dmode === 'day' ? 'yesterday' : 'before';
   var T = [
-    [cur.length, 'feeds · ' + cmp + ' ' + prev.length],
-    [cur.length ? mins(tm) : '–', 'at the breast'],
-    [ml ? fm(ml) + ' ml' : '–', 'top-up'],
-    [gaps.length ? mins(avg) : '–', 'average gap'],
-    [gaps.length ? mins(longest) : '–', 'longest gap'],
-    [next, 'start on next · L ' + cnt('L') + ' / R ' + cnt('R')]
+    [cur.length, '🍼 · ' + (dmode === 'day' ? '↩' : '⟲') + ' ' + prev.length],
+    [cur.length ? mins(tm) : '–', '⏱ breast'],
+    [ml ? fm(ml) + ' ml' : '–', '🥛'],
+    [gaps.length ? mins(avg) : '–', '↔ avg'],
+    [gaps.length ? mins(longest) : '–', '↔ max'],
+    [next, '➜ next · L' + cnt('L') + ' R' + cnt('R')]
   ];
   $('tiles').innerHTML = T.map(function(t){ return '<div class="tile"><b>' + t[0] + '</b><span>' + t[1] + '</span></div>'; }).join('');
   // a typical day from the last 7 days that have feeds (today left out)
   var by = {}; feeds.filter(function(f){ return f.s >= d0.getTime() - 7 * 864e5 && f.s < d0.getTime(); }).forEach(function(f){ var k = dstr(f.s); by[k] = by[k] || {n: 0, ml: 0}; by[k].n++; by[k].ml += f.ml || 0; });
   var ks = Object.keys(by);
-  $('typical').textContent = ks.length ? 'Typical day (last ' + ks.length + ' with feeds): ' + Math.round(ks.reduce(function(a, k){ return a + by[k].n; }, 0) / ks.length * 10) / 10 + ' feeds, ' + fm(ks.reduce(function(a, k){ return a + by[k].ml; }, 0) / ks.length) + ' ml top-up' : '';
+  $('typical').textContent = ks.length ? 'Ø ' + ks.length + ' d: ' + Math.round(ks.reduce(function(a, k){ return a + by[k].n; }, 0) / ks.length * 10) / 10 + ' 🍼 · ' + fm(ks.reduce(function(a, k){ return a + by[k].ml; }, 0) / ks.length) + ' ml' : '';
 }
 document.querySelectorAll('#dash .seg button').forEach(function(b){ b.onclick = function(){ dmode = b.dataset.m; try { localStorage.setItem('bf-dmode', dmode); } catch(e){} renderDash(); }; });
 function tick(){ var s = Math.max(0, Math.floor((Date.now() - live.s) / 1000)); $('clock').textContent = pad(Math.floor(s/60)) + ':' + pad(s % 60); if (s >= 3600) $('clock').textContent = Math.floor(s/3600) + ':' + pad(Math.floor(s/60)%60) + ':' + pad(s%60); }
@@ -241,7 +262,7 @@ $('cancelBtn').onclick = function(){ if (confirm('Discard this feed?')){ live = 
 /* add / edit */
 function resetForm(){
   var n = Date.now();
-  $('formTitle').textContent = 'Add a feed'; $('fDate').value = dstr(n); $('fStart').value = tstr(n - 15*60000); $('fEnd').value = tstr(n); $('fMl').value = ''; formSide = ''; paintSides();
+  $('formTitle').textContent = '🍼 ＋'; $('fDate').value = dstr(n); $('fStart').value = tstr(n - 15*60000); $('fEnd').value = tstr(n); $('fMl').value = ''; formSide = ''; paintSides();
   $('delBtn').hidden = true; $('cancelEdit').hidden = true;
 }
 $('saveBtn').onclick = function(){
@@ -260,20 +281,21 @@ $('cancelEdit').onclick = function(){ editing = null; tab('hist'); };
 function edit(id){
   var f = store.find(function(x){ return x.id === id && !x.del; }); if (!f) return;
   editing = id; tab('add');
-  $('formTitle').textContent = 'Edit feed'; $('fDate').value = dstr(f.s); $('fStart').value = tstr(f.s); $('fEnd').value = tstr(f.e); $('fMl').value = f.ml || ''; formSide = f.side || ''; paintSides();
+  $('formTitle').textContent = '🍼 ✎'; $('fDate').value = dstr(f.s); $('fStart').value = tstr(f.s); $('fEnd').value = tstr(f.e); $('fMl').value = f.ml || ''; formSide = f.side || ''; paintSides();
   $('delBtn').hidden = false; $('cancelEdit').hidden = false;
 }
 
 /* history */
 var openDays = {};   // days the user opened or closed by hand; today is open unless closed
 function renderHist(){
-  if (!feeds.length){ $('histList').innerHTML = '<div class="empty">No feeds yet.</div>'; return; }
   var days = {};
   feeds.slice().sort(function(a,b){ return b.s - a.s; }).forEach(function(f){ (days[dstr(f.s)] = days[dstr(f.s)] || []).push(f); });
+  dstore.forEach(function(x){ if (!x.del && !days[x.day]) days[x.day] = []; });
+  if (!Object.keys(days).length){ $('histList').innerHTML = '<div class="empty">🍼 –</div>'; return; }
   $('histList').innerHTML = Object.keys(days).sort().reverse().map(function(k){
     var L = days[k], mins = L.reduce(function(a,f){ return a + (f.e - f.s) / 60000; }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
     var isOpen = k in openDays ? openDays[k] : k === dstr(Date.now());
-    return '<details class="dayd" data-k="' + k + '"' + (isOpen ? ' open' : '') + '><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + L.length + (L.length === 1 ? ' feed' : ' feeds') + ' · ' + Math.round(mins) + ' min' + (ml ? ' · ' + fm(ml) + ' ml' : '') + '</span></summary>' +
+    return '<details class="dayd" data-k="' + k + '"' + (isOpen ? ' open' : '') + '><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>🍼' + L.length + ' · ' + Math.round(mins) + '′' + (ml ? ' · 🥛' + fm(ml) : '') + ' · 💧' + dcount(k, 'pee') + ' 💩' + dcount(k, 'poop') + '</span></summary>' +
       L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '–' + tstr(f.e) + '</b> <small>' + dur(f.e - f.s) + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('') + '</details>';
   }).join('');
 }
@@ -369,6 +391,19 @@ async function sync(){
     store.forEach(function(f){ var x = remote[f.id]; if (!x || (f.t || 0) > Number(x.t)) up.push(toRow(f)); });
     if (up.length){ var u = await sb.from('bf_feeds').upsert(up); if (u.error) throw u.error; }
     if (changed) commit(false);
+    var dr = await sb.from('bf_diapers').select('*').range(0, 19999);
+    if (dr.error) throw dr.error;
+    var dremote = {}, dlocal = {}, dchanged = false, dup = [];
+    dr.data.forEach(function(x){ dremote[x.id] = x; });
+    dstore.forEach(function(f){ dlocal[f.id] = f; });
+    dr.data.forEach(function(x){
+      var f = dlocal[x.id];
+      if (!f){ dstore.push({id: x.id, day: x.day, k: x.kind, t: Number(x.t), del: x.deleted}); dchanged = true; }
+      else if (Number(x.t) > (f.t || 0)){ f.t = Number(x.t); f.del = x.deleted; dchanged = true; }
+    });
+    dstore.forEach(function(f){ var x = dremote[f.id]; if (!x || (f.t || 0) > Number(x.t)) dup.push({id: f.id, day: f.day, kind: f.k, t: f.t, deleted: !!f.del}); });
+    if (dup.length){ var du = await sb.from('bf_diapers').upsert(dup); if (du.error) throw du.error; }
+    if (dchanged) dCommit(false);
     lastSync = Date.now(); syncErr = false; syncMsg = '';
   } catch(e){ syncErr = true; syncMsg = (e && (e.message || e.code)) || ''; }
   syncing = false; paintSync();
