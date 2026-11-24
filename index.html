@@ -21,6 +21,13 @@ h1{font-size:18px;margin:0}
 .tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:16px}
 .tab{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:12px 0;font:inherit;font-weight:600;color:var(--muted)}
 .tab.on{color:var(--fg);border-bottom-color:var(--accent)}
+.round{display:block;width:170px;height:170px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-fg);font-size:64px;margin:18px auto 10px;box-shadow:0 8px 24px rgba(217,138,133,.4)}
+.round:active{transform:scale(.97)}
+.qsheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
+.qsheet input[type=time]{font:inherit;font-size:22px;margin-left:8px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff;color:var(--fg)}
+.qchips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.qrow{display:flex;gap:10px}.qrow .btn{margin-top:6px}.btn.alt{background:var(--line);color:var(--fg);max-width:90px}
+.qsum{text-align:center;font-weight:700;font-size:18px;margin:8px 0}
 .big{display:block;width:100%;border:0;border-radius:20px;background:var(--accent);color:var(--accent-fg);font:inherit;font-size:22px;font-weight:700;padding:34px 0;margin:10px 0}
 .big.stop{background:var(--deep);color:#fff}
 .clock{text-align:center;font-size:56px;font-weight:300;font-variant-numeric:tabular-nums;margin:18px 0 0}
@@ -64,9 +71,22 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <div class="gate" id="gate" hidden></div>
 <main id="app">
   <header><h1>Baby Feeds</h1><button type="button" class="linkbtn" id="installBtn">Install app</button></header>
-  <nav class="tabs"><button class="tab on" data-tab="live" aria-label="Live">🍼</button><button class="tab" data-tab="add" aria-label="Add">＋</button><button class="tab" data-tab="hist" aria-label="History">📅</button></nav>
+  <nav class="tabs"><button class="tab on" data-tab="quick" aria-label="Quick">◉</button><button class="tab" data-tab="live" aria-label="Live">🍼</button><button class="tab" data-tab="add" aria-label="Add">＋</button><button class="tab" data-tab="hist" aria-label="History">📅</button></nav>
 
-  <section id="live">
+  <section id="quick">
+    <button type="button" class="round" id="qBtn" aria-label="Feed">🍼</button>
+    <div class="sub" id="qLast"></div>
+    <div id="qSheet" class="qsheet" hidden>
+      <label class="sub">Start <input type="time" id="qTime"></label>
+      <div class="sub">End (optional)</div>
+      <div class="qchips" id="qChips"></div>
+      <div class="qrow"><button type="button" class="btn" id="qSave">✓</button><button type="button" class="btn alt" id="qCancel">✕</button></div>
+    </div>
+    <div id="qToday"></div>
+    <details class="dayd" id="qOldWrap"><summary class="day"><span class="dl">Earlier</span><span>▾</span></summary><div id="qOld"></div></details>
+  </section>
+
+  <section id="live" hidden>
     <div class="sub" id="lastFeed"></div>
     <div class="clock" id="clock" hidden>00:00</div>
     <div class="sub" id="startedAt" hidden></div>
@@ -128,7 +148,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.3.0';
+var APP_VERSION = '2.4.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -168,23 +188,26 @@ document.querySelectorAll('.dminus').forEach(function(b){ b.onclick = function()
 }; });
 // A feed can be saved with gaps. miss holds 's' (no start) and/or 'e' (no end); no breast also counts as incomplete.
 function noS(f){ return (f.miss || '').indexOf('s') >= 0; }
-function noE(f){ return (f.miss || '').indexOf('e') >= 0; }
-function incomplete(f){ return noS(f) || noE(f) || !f.side; }
+function noE(f){ return /[en]/.test(f.miss || ''); }
+function qk(f){ return (f.miss || '').indexOf('q') >= 0; }
+function incomplete(f){ return noS(f) || (f.miss || '').indexOf('e') >= 0 || (!f.side && !qk(f)); }
 function whole(f){ return !noS(f) && !noE(f); }
+function qNo(f){ return (f.miss || '').indexOf('n') >= 0; }
 function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 // Save locally, refresh the screen and (when signed in) sync with the other phone
 function commit(push){
   save(KEY, store); feeds = store.filter(function(f){ return !f.del; });
-  renderLive(); remRender(); if (!$('hist').hidden) renderHist();
+  renderLive(); remRender(); if (!$('hist').hidden) renderHist(); if (!$('quick').hidden) renderQuick();
   if (push !== false) syncSoon();
 }
 function toMs(date, time){ var d = date.split('-'), t = time.split(':'); return new Date(+d[0], +d[1]-1, +d[2], +t[0], +t[1]).getTime(); }
 
 /* tabs */
 function tab(name){
-  ['live','add','hist'].forEach(function(t){ $(t).hidden = t !== name; });
+  ['quick','live','add','hist'].forEach(function(t){ $(t).hidden = t !== name; });
   document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('on', b.dataset.tab === name); });
   if (name === 'hist') renderHist();
+  if (name === 'quick') renderQuick();
   if (name === 'add' && editing === null) resetForm();
 }
 document.querySelectorAll('.tab').forEach(function(b){ b.onclick = function(){ if (b.dataset.tab !== 'add') editing = null; tab(b.dataset.tab); }; });
@@ -293,6 +316,36 @@ function edit(id){
   $('delBtn').hidden = false; $('cancelEdit').hidden = false;
 }
 
+/* quick tab: one round button */
+var qDur = 0;
+function qSumTxt(L){
+  var m = L.reduce(function(a, f){ return a + (whole(f) ? (f.e - f.s) / 60000 : 0); }, 0);
+  return '🍼 ' + L.length + (m > 0 ? ' · ' + dur(m * 60000) : '');
+}
+function renderQuick(){
+  var days = {};
+  feeds.slice().sort(function(a, b){ return b.s - a.s; }).forEach(function(f){ (days[dstr(f.s)] = days[dstr(f.s)] || []).push(f); });
+  var td = dstr(Date.now()), L = days[td] || [];
+  $('qToday').innerHTML = '<div class="qsum">' + qSumTxt(L) + '</div>' + L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '</b> <small>' + (whole(f) ? dur(f.e - f.s) : '') + '</small></span></button>'; }).join('');
+  var last = feeds.length ? Math.max.apply(null, feeds.map(function(f){ return f.s; })) : 0;
+  $('qLast').textContent = last ? '⏱ ' + tstr(last) : '';
+  var ks = Object.keys(days).filter(function(k){ return k !== td; }).sort().reverse();
+  $('qOldWrap').hidden = !ks.length;
+  $('qOld').innerHTML = ks.map(function(k){ return '<div class="day" style="cursor:default"><span class="dl">' + dayLabel(k) + '</span><span>' + qSumTxt(days[k]) + '</span></div>'; }).join('');
+}
+$('qChips').innerHTML = [5,10,15,20,30,45].map(function(m){ return '<button type="button" class="chip" data-m="' + m + '">' + m + '′</button>'; }).join('');
+$('qChips').onclick = function(e){ var b = e.target.closest('.chip'); if (!b) return; qDur = qDur === +b.dataset.m ? 0 : +b.dataset.m; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.toggle('on', +c.dataset.m === qDur); }); };
+$('qBtn').onclick = function(){ qDur = 0; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.remove('on'); }); $('qTime').value = tstr(Date.now()); $('qSheet').hidden = false; $('qBtn').hidden = true; };
+function qClose(){ $('qSheet').hidden = true; $('qBtn').hidden = false; }
+$('qCancel').onclick = qClose;
+$('qSave').onclick = function(){
+  var v = $('qTime').value; if (!v) return;
+  var s = toMs(dstr(Date.now()), v); if (s > Date.now() + 10 * 60000) s -= 86400000;
+  store.push({id: newId(), s: s, e: qDur ? s + qDur * 60000 : s, ml: 0, side: '', miss: 'q' + (qDur ? '' : 'n'), t: Date.now()});
+  rem.manual = null; remSave(); commit(); qClose(); toast('Saved'); schedule();
+};
+$('qToday').onclick = function(e){ var b = e.target.closest('.item'); if (b) edit(b.dataset.id); };
+
 /* history */
 var openDays = {};   // days the user opened or closed by hand; today is open unless closed
 function renderHist(){
@@ -304,7 +357,7 @@ function renderHist(){
     var L = days[k], mins = L.reduce(function(a,f){ return a + (whole(f) ? (f.e - f.s) / 60000 : 0); }, 0), ml = L.reduce(function(a,f){ return a + (f.ml || 0); }, 0);
     var isOpen = k in openDays ? openDays[k] : k === dstr(Date.now());
     return '<details class="dayd" data-k="' + k + '"' + (isOpen ? ' open' : '') + '><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + (L.some(incomplete) ? '<b class="bang">!</b> ' : '') + '🍼' + L.length + ' · ' + Math.round(mins) + '′' + (ml ? ' · 🥛' + fm(ml) : '') + ' · 💧' + dcount(k, 'pee') + ' 💩' + dcount(k, 'poop') + '</span></summary>' +
-      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span>' + (incomplete(f) ? '<b class="bang" title="Something is missing">!</b>' : '') + '<b>' + (noS(f) ? '–:–' : tstr(f.s)) + '–' + (noE(f) ? '–:–' : tstr(f.e)) + '</b> <small>' + (whole(f) ? dur(f.e - f.s) : '') + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('') + '</details>';
+      L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span>' + (incomplete(f) ? '<b class="bang" title="Something is missing">!</b>' : '') + '<b>' + (noS(f) ? '–:–' : tstr(f.s)) + (qNo(f) ? '' : '–' + (noE(f) ? '–:–' : tstr(f.e))) + '</b> <small>' + (whole(f) ? dur(f.e - f.s) : '') + (f.side ? ' · ' + sideTxt(f.side) : '') + '</small></span><span>' + (f.ml ? '+' + fm(f.ml) + ' ml' : '') + '</span></button>'; }).join('') + '</details>';
   }).join('');
 }
 $('histList').addEventListener('toggle', function(e){ var d = e.target; if (d.dataset && d.dataset.k) openDays[d.dataset.k] = d.open; }, true);
@@ -418,7 +471,7 @@ async function sync(){
   if (again){ again = false; syncSoon(); }
 }
 async function boot(){
-  renderLive(); resetForm(); remRender();
+  renderLive(); renderQuick(); resetForm(); remRender();
   if (!(window.supabase && window.supabase.createClient)){ gate('<h2>Could not load</h2><p>The sync library did not load. Check your connection and reload.</p>'); return; }
   sb = window.supabase.createClient(SB_URL, SB_KEY, {auth: {persistSession: true, detectSessionInUrl: true, flowType: 'pkce'}});
   try { sess = (await sb.auth.getSession()).data.session; } catch(e){}

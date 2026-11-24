@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.4.0 - 2026-11-24
+- New first tab ◉ (Quick): one big round button for a breast feed. Tap it, the start time opens at now (change it if needed), optionally pick how long it lasted (5, 10, 15, 20, 30 or 45 min), then ✓. Breast side and top-up are not asked.
+- Same screen: today's number of feeds and total time (time only shown when some feed has a length), plus today's feeds (tap to edit). Earlier days sit in a hidden "Earlier" dropdown.
+- The old Live, Add and History tabs are unchanged. Quick feeds show in History with only their start time and no red !.
+
 ## 2.3.0 - 2026-11-22
 - Add: a feed can now be saved with start, end, breast or top-up left empty. In History it gets a red ! (also on the day row), and missing times show as –:–. Tap it to fill the gaps later. A feed with no breast chosen also gets the !.
 - Feeds without a start time are left out of the last-feed time, the gaps and the reminder; feeds without both times are left out of the time at the breast.
