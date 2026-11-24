@@ -27,6 +27,13 @@ h1{font-size:18px;margin:0}
 .qsheet input[type=time]{font:inherit;font-size:22px;margin-left:8px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff;color:var(--fg)}
 .qchips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
 .qrow{display:flex;gap:10px}.qrow .btn{margin-top:6px}.btn.alt{background:var(--line);color:var(--fg);max-width:90px}
+.qsince{text-align:center;color:var(--muted);font-size:14px;margin-top:14px;min-height:18px}
+.qcard{display:flex;align-items:center;gap:12px;width:100%;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:10px 14px;margin:6px 0;font:inherit;color:var(--fg);text-align:left}
+.qt{font-weight:700;font-size:18px;min-width:56px}
+.qd{flex:1;position:relative;color:var(--deep);font-size:14px;padding:4px 8px;border-radius:8px;overflow:hidden}
+.qbar{position:absolute;left:0;top:0;bottom:0;background:var(--line);z-index:0;border-radius:8px}
+.qdt{position:relative;z-index:1}.qe{color:var(--muted)}
+#qOld .dayd{margin:6px 0}
 .qsum{text-align:center;font-weight:700;font-size:18px;margin:8px 0}
 .big{display:block;width:100%;border:0;border-radius:20px;background:var(--accent);color:var(--accent-fg);font:inherit;font-size:22px;font-weight:700;padding:34px 0;margin:10px 0}
 .big.stop{background:var(--deep);color:#fff}
@@ -74,16 +81,16 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
   <nav class="tabs"><button class="tab on" data-tab="quick" aria-label="Quick">◉</button><button class="tab" data-tab="live" aria-label="Live">🍼</button><button class="tab" data-tab="add" aria-label="Add">＋</button><button class="tab" data-tab="hist" aria-label="History">📅</button></nav>
 
   <section id="quick">
+    <div class="qsince" id="qSince"></div>
     <button type="button" class="round" id="qBtn" aria-label="Feed">🍼</button>
-    <div class="sub" id="qLast"></div>
     <div id="qSheet" class="qsheet" hidden>
       <label class="sub">Start <input type="time" id="qTime"></label>
-      <div class="sub">End (optional)</div>
+      <div class="sub">Duration (optional)</div>
       <div class="qchips" id="qChips"></div>
       <div class="qrow"><button type="button" class="btn" id="qSave">✓</button><button type="button" class="btn alt" id="qCancel">✕</button></div>
     </div>
     <div id="qToday"></div>
-    <details class="dayd" id="qOldWrap"><summary class="day"><span class="dl">Earlier</span><span>▾</span></summary><div id="qOld"></div></details>
+    <details class="dayd" id="qOldWrap"><summary class="day"><span class="dl">Earlier</span></summary><div id="qOld"></div></details>
   </section>
 
   <section id="live" hidden>
@@ -148,7 +155,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.4.0';
+var APP_VERSION = '2.4.1';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -322,20 +329,31 @@ function qSumTxt(L){
   var m = L.reduce(function(a, f){ return a + (whole(f) ? (f.e - f.s) / 60000 : 0); }, 0);
   return '🍼 ' + L.length + (m > 0 ? ' · ' + dur(m * 60000) : '');
 }
+function qSince(last){
+  if (last === undefined) last = feeds.length ? Math.max.apply(null, feeds.map(function(f){ return f.s; })) : 0;
+  qLastMs = last;
+  $('qSince').textContent = last ? 'Time since last feed: ' + dur(Math.max(0, Date.now() - last)) : '';
+}
+var qLastMs = 0;
+setInterval(function(){ if (!$('quick').hidden) qSince(qLastMs); }, 30000);
+function qItem(f){
+  var d = whole(f) && f.e > f.s ? dur(f.e - f.s) : '';
+  return '<button class="qcard" data-id="' + f.id + '"><span class="qt">' + tstr(f.s) + '</span><span class="qd">' + (d ? '<i class="qbar" style="width:' + Math.min(100, Math.round((f.e - f.s) / 60000 / 45 * 100)) + '%"></i><span class="qdt">' + d + '</span>' : '·') + '</span><span class="qe">✎</span></button>';
+}
 function renderQuick(){
   var days = {};
   feeds.slice().sort(function(a, b){ return b.s - a.s; }).forEach(function(f){ (days[dstr(f.s)] = days[dstr(f.s)] || []).push(f); });
   var td = dstr(Date.now()), L = days[td] || [];
-  $('qToday').innerHTML = '<div class="qsum">' + qSumTxt(L) + '</div>' + L.map(function(f){ return '<button class="item" data-id="' + f.id + '"><span><b>' + tstr(f.s) + '</b> <small>' + (whole(f) ? dur(f.e - f.s) : '') + '</small></span></button>'; }).join('');
+  $('qToday').innerHTML = '<div class="qsum">' + qSumTxt(L) + '</div>' + L.slice().sort(function(a, b){ return a.s - b.s; }).map(qItem).join('');
   var last = feeds.length ? Math.max.apply(null, feeds.map(function(f){ return f.s; })) : 0;
-  $('qLast').textContent = last ? '⏱ ' + tstr(last) : '';
+  qSince(last);
   var ks = Object.keys(days).filter(function(k){ return k !== td; }).sort().reverse();
   $('qOldWrap').hidden = !ks.length;
-  $('qOld').innerHTML = ks.map(function(k){ return '<div class="day" style="cursor:default"><span class="dl">' + dayLabel(k) + '</span><span>' + qSumTxt(days[k]) + '</span></div>'; }).join('');
+  $('qOld').innerHTML = ks.map(function(k){ return '<details class="dayd"><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + qSumTxt(days[k]) + '</span></summary>' + days[k].slice().sort(function(a, b){ return a.s - b.s; }).map(qItem).join('') + '</details>'; }).join('');
 }
 $('qChips').innerHTML = [5,10,15,20,30,45].map(function(m){ return '<button type="button" class="chip" data-m="' + m + '">' + m + '′</button>'; }).join('');
 $('qChips').onclick = function(e){ var b = e.target.closest('.chip'); if (!b) return; qDur = qDur === +b.dataset.m ? 0 : +b.dataset.m; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.toggle('on', +c.dataset.m === qDur); }); };
-$('qBtn').onclick = function(){ qDur = 0; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.remove('on'); }); $('qTime').value = tstr(Date.now()); $('qSheet').hidden = false; $('qBtn').hidden = true; };
+$('qBtn').onclick = function(){ qDur = 0; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.remove('on'); }); $('qTime').value = tstr(Date.now()); $('qSheet').hidden = false; $('qBtn').hidden = true; try { $('qTime').focus(); if ($('qTime').showPicker) $('qTime').showPicker(); } catch (e) {} };
 function qClose(){ $('qSheet').hidden = true; $('qBtn').hidden = false; }
 $('qCancel').onclick = qClose;
 $('qSave').onclick = function(){
@@ -344,7 +362,8 @@ $('qSave').onclick = function(){
   store.push({id: newId(), s: s, e: qDur ? s + qDur * 60000 : s, ml: 0, side: '', miss: 'q' + (qDur ? '' : 'n'), t: Date.now()});
   rem.manual = null; remSave(); commit(); qClose(); toast('Saved'); schedule();
 };
-$('qToday').onclick = function(e){ var b = e.target.closest('.item'); if (b) edit(b.dataset.id); };
+function qEdit(e){ var b = e.target.closest('.qcard'); if (b) edit(b.dataset.id); }
+$('qToday').onclick = qEdit; $('qOld').onclick = qEdit;
 
 /* history */
 var openDays = {};   // days the user opened or closed by hand; today is open unless closed

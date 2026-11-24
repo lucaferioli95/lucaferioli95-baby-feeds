@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.1 - 2026-11-24
+- Quick: tapping the round button opens the clock straight away. "Time since last feed" shows above the button. "End" is now "Duration".
+- Quick: feeds are shown as cards (time, a bar for how long, tap to edit). Each earlier day now opens to show its feeds.
+
 ## 2.4.0 - 2026-11-24
 - New first tab ◉ (Quick): one big round button for a breast feed. Tap it, the start time opens at now (change it if needed), optionally pick how long it lasted (5, 10, 15, 20, 30 or 45 min), then ✓. Breast side and top-up are not asked.
 - Same screen: today's number of feeds and total time (time only shown when some feed has a length), plus today's feeds (tap to edit). Earlier days sit in a hidden "Earlier" dropdown.
