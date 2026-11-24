@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.4.3 - 2026-11-24
+- New app icon: a bee 🐝 on a peach background.
+
 ## 2.4.2 - 2026-11-24
 - Quick: the bottle is now a bee 🐝. The day summary shows only the number of feeds (no total time). Feeds are listed latest first.
 
