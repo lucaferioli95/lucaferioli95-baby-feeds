@@ -82,7 +82,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 
   <section id="quick">
     <div class="qsince" id="qSince"></div>
-    <button type="button" class="round" id="qBtn" aria-label="Feed">🍼</button>
+    <button type="button" class="round" id="qBtn" aria-label="Feed">🐝</button>
     <div id="qSheet" class="qsheet" hidden>
       <label class="sub">Start <input type="time" id="qTime"></label>
       <div class="sub">Duration (optional)</div>
@@ -155,7 +155,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.4.1';
+var APP_VERSION = '2.4.2';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -325,10 +325,7 @@ function edit(id){
 
 /* quick tab: one round button */
 var qDur = 0;
-function qSumTxt(L){
-  var m = L.reduce(function(a, f){ return a + (whole(f) ? (f.e - f.s) / 60000 : 0); }, 0);
-  return '🍼 ' + L.length + (m > 0 ? ' · ' + dur(m * 60000) : '');
-}
+function qSumTxt(L){ return '🐝 ' + L.length; }
 function qSince(last){
   if (last === undefined) last = feeds.length ? Math.max.apply(null, feeds.map(function(f){ return f.s; })) : 0;
   qLastMs = last;
@@ -344,12 +341,12 @@ function renderQuick(){
   var days = {};
   feeds.slice().sort(function(a, b){ return b.s - a.s; }).forEach(function(f){ (days[dstr(f.s)] = days[dstr(f.s)] || []).push(f); });
   var td = dstr(Date.now()), L = days[td] || [];
-  $('qToday').innerHTML = '<div class="qsum">' + qSumTxt(L) + '</div>' + L.slice().sort(function(a, b){ return a.s - b.s; }).map(qItem).join('');
+  $('qToday').innerHTML = '<div class="qsum">' + qSumTxt(L) + '</div>' + L.slice().sort(function(a, b){ return b.s - a.s; }).map(qItem).join('');
   var last = feeds.length ? Math.max.apply(null, feeds.map(function(f){ return f.s; })) : 0;
   qSince(last);
   var ks = Object.keys(days).filter(function(k){ return k !== td; }).sort().reverse();
   $('qOldWrap').hidden = !ks.length;
-  $('qOld').innerHTML = ks.map(function(k){ return '<details class="dayd"><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + qSumTxt(days[k]) + '</span></summary>' + days[k].slice().sort(function(a, b){ return a.s - b.s; }).map(qItem).join('') + '</details>'; }).join('');
+  $('qOld').innerHTML = ks.map(function(k){ return '<details class="dayd"><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + qSumTxt(days[k]) + '</span></summary>' + days[k].slice().sort(function(a, b){ return b.s - a.s; }).map(qItem).join('') + '</details>'; }).join('');
 }
 $('qChips').innerHTML = [5,10,15,20,30,45].map(function(m){ return '<button type="button" class="chip" data-m="' + m + '">' + m + '′</button>'; }).join('');
 $('qChips').onclick = function(e){ var b = e.target.closest('.chip'); if (!b) return; qDur = qDur === +b.dataset.m ? 0 : +b.dataset.m; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.toggle('on', +c.dataset.m === qDur); }); };

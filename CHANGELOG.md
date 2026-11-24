@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.4.2 - 2026-11-24
+- Quick: the bottle is now a bee 🐝. The day summary shows only the number of feeds (no total time). Feeds are listed latest first.
+
 ## 2.4.1 - 2026-11-24
 - Quick: tapping the round button opens the clock straight away. "Time since last feed" shows above the button. "End" is now "Duration".
 - Quick: feeds are shown as cards (time, a bar for how long, tap to edit). Each earlier day now opens to show its feeds.
