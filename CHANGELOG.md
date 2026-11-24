@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.0 - 2026-11-24
+- Quick is now the only screen. New field: breast L and/or R (tap one or both).
+- Tapping a feed card edits its time, breast and duration, and can delete it.
+- Removed the Live, Add and History tabs. All saved feeds, nappy counts and their syncing are kept.
+
 ## 2.4.3 - 2026-11-24
 - New app icon: a bee 🐝 on a peach background.
 

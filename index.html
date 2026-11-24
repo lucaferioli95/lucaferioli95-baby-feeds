@@ -26,7 +26,7 @@ h1{font-size:18px;margin:0}
 .qsheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
 .qsheet input[type=time]{font:inherit;font-size:22px;margin-left:8px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff;color:var(--fg)}
 .qchips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
-.qrow{display:flex;gap:10px}.qrow .btn{margin-top:6px}.btn.alt{background:var(--line);color:var(--fg);max-width:90px}
+.qrow{display:flex;gap:10px}.qrow .btn{margin-top:6px}.btn.alt{max-width:70px}.btn.alt{background:var(--line);color:var(--fg);max-width:90px}
 .qsince{text-align:center;color:var(--muted);font-size:14px;margin-top:14px;min-height:18px}
 .qcard{display:flex;align-items:center;gap:12px;width:100%;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:10px 14px;margin:6px 0;font:inherit;color:var(--fg);text-align:left}
 .qt{font-weight:700;font-size:18px;min-width:56px}
@@ -78,22 +78,23 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <div class="gate" id="gate" hidden></div>
 <main id="app">
   <header><h1>Baby Feeds</h1><button type="button" class="linkbtn" id="installBtn">Install app</button></header>
-  <nav class="tabs"><button class="tab on" data-tab="quick" aria-label="Quick">◉</button><button class="tab" data-tab="live" aria-label="Live">🍼</button><button class="tab" data-tab="add" aria-label="Add">＋</button><button class="tab" data-tab="hist" aria-label="History">📅</button></nav>
 
   <section id="quick">
     <div class="qsince" id="qSince"></div>
     <button type="button" class="round" id="qBtn" aria-label="Feed">🐝</button>
     <div id="qSheet" class="qsheet" hidden>
       <label class="sub">Start <input type="time" id="qTime"></label>
-      <div class="sub">Duration (optional)</div>
+      <div class="sub">Breast</div>
+      <div class="qchips" id="qSides"><button type="button" class="chip" data-s="L">L</button><button type="button" class="chip" data-s="R">R</button></div>
+      <div class="sub">Duration</div>
       <div class="qchips" id="qChips"></div>
-      <div class="qrow"><button type="button" class="btn" id="qSave">✓</button><button type="button" class="btn alt" id="qCancel">✕</button></div>
+      <div class="qrow"><button type="button" class="btn" id="qSave">✓</button><button type="button" class="btn alt" id="qCancel">✕</button><button type="button" class="btn alt" id="qDel" hidden>🗑</button></div>
     </div>
     <div id="qToday"></div>
     <details class="dayd" id="qOldWrap"><summary class="day"><span class="dl">Earlier</span></summary><div id="qOld"></div></details>
   </section>
 
-  <section id="live" hidden>
+  <section id="live" hidden style="display:none">
     <div class="sub" id="lastFeed"></div>
     <div class="clock" id="clock" hidden>00:00</div>
     <div class="sub" id="startedAt" hidden></div>
@@ -127,7 +128,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
     </div>
   </section>
 
-  <section id="add" hidden>
+  <section id="add" hidden style="display:none">
     <div class="card">
       <h2 id="formTitle" style="margin:0;font-size:16px">🍼 ＋</h2>
       <label for="fDate">Date</label><input id="fDate" type="date">
@@ -145,7 +146,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
     </div>
   </section>
 
-  <section id="hist" hidden>
+  <section id="hist" hidden style="display:none">
     <div id="histList"></div>
     <button class="btn ghost" id="exportBtn" type="button">⬇ CSV</button>
   </section>
@@ -155,7 +156,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.4.3';
+var APP_VERSION = '2.5.0';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
@@ -324,7 +325,7 @@ function edit(id){
 }
 
 /* quick tab: one round button */
-var qDur = 0;
+var qDur = 0, qSide = '', qEditing = null, qDurMs = 0;
 function qSumTxt(L){ return '🐝 ' + L.length; }
 function qSince(last){
   if (last === undefined) last = feeds.length ? Math.max.apply(null, feeds.map(function(f){ return f.s; })) : 0;
@@ -335,7 +336,7 @@ var qLastMs = 0;
 setInterval(function(){ if (!$('quick').hidden) qSince(qLastMs); }, 30000);
 function qItem(f){
   var d = whole(f) && f.e > f.s ? dur(f.e - f.s) : '';
-  return '<button class="qcard" data-id="' + f.id + '"><span class="qt">' + tstr(f.s) + '</span><span class="qd">' + (d ? '<i class="qbar" style="width:' + Math.min(100, Math.round((f.e - f.s) / 60000 / 45 * 100)) + '%"></i><span class="qdt">' + d + '</span>' : '·') + '</span><span class="qe">✎</span></button>';
+  return '<button class="qcard" data-id="' + f.id + '"><span class="qt">' + tstr(f.s) + '</span><span class="qd">' + (d ? '<i class="qbar" style="width:' + Math.min(100, Math.round((f.e - f.s) / 60000 / 45 * 100)) + '%"></i><span class="qdt">' + d + '</span>' : '·') + '</span><span class="qe">' + (f.side ? '<b>' + sideTxt(f.side) + '</b> ' : '') + '✎</span></button>';
 }
 function renderQuick(){
   var days = {};
@@ -349,17 +350,39 @@ function renderQuick(){
   $('qOld').innerHTML = ks.map(function(k){ return '<details class="dayd"><summary class="day"><span class="dl">' + dayLabel(k) + '</span><span>' + qSumTxt(days[k]) + '</span></summary>' + days[k].slice().sort(function(a, b){ return b.s - a.s; }).map(qItem).join('') + '</details>'; }).join('');
 }
 $('qChips').innerHTML = [5,10,15,20,30,45].map(function(m){ return '<button type="button" class="chip" data-m="' + m + '">' + m + '′</button>'; }).join('');
-$('qChips').onclick = function(e){ var b = e.target.closest('.chip'); if (!b) return; qDur = qDur === +b.dataset.m ? 0 : +b.dataset.m; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.toggle('on', +c.dataset.m === qDur); }); };
-$('qBtn').onclick = function(){ qDur = 0; document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.remove('on'); }); $('qTime').value = tstr(Date.now()); $('qSheet').hidden = false; $('qBtn').hidden = true; try { $('qTime').focus(); if ($('qTime').showPicker) $('qTime').showPicker(); } catch (e) {} };
-function qClose(){ $('qSheet').hidden = true; $('qBtn').hidden = false; }
+function qPaint(){
+  document.querySelectorAll('#qChips .chip').forEach(function(c){ c.classList.toggle('on', +c.dataset.m * 60000 === qDurMs); });
+  document.querySelectorAll('#qSides .chip').forEach(function(c){ c.classList.toggle('on', qSide.indexOf(c.dataset.s) >= 0); });
+}
+$('qChips').onclick = function(e){ var b = e.target.closest('.chip'); if (!b) return; var v = +b.dataset.m * 60000; qDurMs = qDurMs === v ? 0 : v; qPaint(); };
+$('qSides').onclick = function(e){ var b = e.target.closest('.chip'); if (!b) return; var x = b.dataset.s; qSide = (qSide.indexOf(x) >= 0 ? qSide.replace(x, '') : qSide + x).split('').sort(function(p, q){ return p === 'L' ? -1 : 1; }).join(''); qPaint(); };
+function qOpen(id){
+  var f = id ? store.find(function(x){ return x.id === id && !x.del; }) : null;
+  qEditing = f ? f.id : null;
+  qSide = f ? (f.side || '') : ''; qDurMs = f && whole(f) && f.e > f.s ? f.e - f.s : 0;
+  $('qTime').value = tstr(f ? f.s : Date.now()); $('qDel').hidden = !f;
+  $('qSheet').hidden = false; $('qBtn').hidden = true; qPaint();
+  if (f) window.scrollTo(0, 0);
+  else { try { $('qTime').focus(); if ($('qTime').showPicker) $('qTime').showPicker(); } catch (e) {} }
+}
+$('qBtn').onclick = function(){ qOpen(null); };
+function qClose(){ $('qSheet').hidden = true; $('qBtn').hidden = false; qEditing = null; }
 $('qCancel').onclick = qClose;
+$('qDel').onclick = function(){
+  var f = store.find(function(x){ return x.id === qEditing; });
+  if (f && confirm('Delete this feed?')){ f.del = true; f.t = Date.now(); commit(); qClose(); schedule(); }
+};
 $('qSave').onclick = function(){
   var v = $('qTime').value; if (!v) return;
-  var s = toMs(dstr(Date.now()), v); if (s > Date.now() + 10 * 60000) s -= 86400000;
-  store.push({id: newId(), s: s, e: qDur ? s + qDur * 60000 : s, ml: 0, side: '', miss: 'q' + (qDur ? '' : 'n'), t: Date.now()});
-  rem.manual = null; remSave(); commit(); qClose(); toast('Saved'); schedule();
+  var f = qEditing ? store.find(function(x){ return x.id === qEditing; }) : null;
+  var day = f ? dstr(f.s) : dstr(Date.now());
+  var s = toMs(day, v); if (!f && s > Date.now() + 10 * 60000) s -= 86400000;
+  var miss = 'q' + (qDurMs ? '' : 'n');
+  if (f){ f.s = s; f.e = s + qDurMs; f.side = qSide; f.miss = miss; f.t = Date.now(); }
+  else { store.push({id: newId(), s: s, e: s + qDurMs, ml: 0, side: qSide, miss: miss, t: Date.now()}); rem.manual = null; remSave(); }
+  commit(); qClose(); toast('Saved'); schedule();
 };
-function qEdit(e){ var b = e.target.closest('.qcard'); if (b) edit(b.dataset.id); }
+function qEdit(e){ var b = e.target.closest('.qcard'); if (b) qOpen(b.dataset.id); }
 $('qToday').onclick = qEdit; $('qOld').onclick = qEdit;
 
 /* history */
