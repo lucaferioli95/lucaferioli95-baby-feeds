@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.5.1 - 2026-11-25
+- Quick: the round button and the app icon are now soft sage green, which suits the bee and sits well on the cream background.
+
 ## 2.5.0 - 2026-11-24
 - Quick is now the only screen. New field: breast L and/or R (tap one or both).
 - Tapping a feed card edits its time, breast and duration, and can delete it.

@@ -21,7 +21,7 @@ h1{font-size:18px;margin:0}
 .tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:16px}
 .tab{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:12px 0;font:inherit;font-weight:600;color:var(--muted)}
 .tab.on{color:var(--fg);border-bottom-color:var(--accent)}
-.round{display:block;width:170px;height:170px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-fg);font-size:64px;margin:18px auto 10px;box-shadow:0 8px 24px rgba(217,138,133,.4)}
+.round{display:block;width:170px;height:170px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#d9e8d2,#b4cfae);color:var(--fg);font-size:64px;margin:18px auto 10px;box-shadow:0 8px 24px rgba(110,140,105,.35)}
 .round:active{transform:scale(.97)}
 .qsheet{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
 .qsheet input[type=time]{font:inherit;font-size:22px;margin-left:8px;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:#fff;color:var(--fg)}
@@ -156,7 +156,7 @@ input{width:100%;font:inherit;font-size:18px;padding:10px;border:1px solid var(-
 <script src="supabase.js"></script>
 <script src="install.js"></script>
 <script>
-var APP_VERSION = '2.5.0';
+var APP_VERSION = '2.5.1';
 var KEY = 'bf-feeds-v1', LIVE = 'bf-live-v1';
 function $(id){ return document.getElementById(id); }
 function load(k, d){ try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch(e){ return d; } }
