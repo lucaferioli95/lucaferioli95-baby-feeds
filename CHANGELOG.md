@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.5.2 - 2026-11-26
+- The round button and the app icon are now a graded yellow (light butter to honey).
+
 ## 2.5.1 - 2026-11-25
 - Quick: the round button and the app icon are now soft sage green, which suits the bee and sits well on the cream background.
 
